@@ -101,7 +101,7 @@ func runWizard() error {
 	fmt.Println("Поставит и настроит VPN на твоём сервере по SSH.")
 	fmt.Println()
 
-	raw := promptLine("Адрес сервера (например root@1.2.3.4): ")
+	raw := promptLine("IP-адрес сервера (или user@IP; по умолчанию пользователь root): ")
 	if raw == "" {
 		return errors.New("адрес сервера не указан")
 	}
