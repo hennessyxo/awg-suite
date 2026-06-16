@@ -117,6 +117,16 @@ func AlreadyInstalled(output string) bool {
 	return strings.Contains(output, "AWG_ALREADY_INSTALLED")
 }
 
+// CheckInstalledCommand prints AWG_INSTALLED if the server is already set up.
+func CheckInstalledCommand(sudo string) string {
+	return sudo + "test -f /etc/amnezia/amneziawg/params && echo AWG_INSTALLED || true"
+}
+
+// IsInstalled interprets the output of CheckInstalledCommand.
+func IsInstalled(output string) bool {
+	return strings.Contains(output, "AWG_INSTALLED")
+}
+
 // MonitorDumpCommand returns the command that dumps live interface state.
 func MonitorDumpCommand(sudo, iface string) string {
 	return sudo + "awg show " + shellQuote(iface) + " dump"

@@ -107,6 +107,16 @@ func TestAlreadyInstalled(t *testing.T) {
 	}
 }
 
+func TestCheckInstalled(t *testing.T) {
+	cmd := CheckInstalledCommand("sudo ")
+	if !strings.Contains(cmd, "test -f /etc/amnezia/amneziawg/params") || !strings.Contains(cmd, "AWG_INSTALLED") {
+		t.Errorf("CheckInstalledCommand = %q", cmd)
+	}
+	if !IsInstalled("foo\nAWG_INSTALLED\n") || IsInstalled("nope") {
+		t.Error("IsInstalled mismatch")
+	}
+}
+
 func TestShellQuote_EscapesQuotes(t *testing.T) {
 	if got := shellQuote("a'b"); got != `'a'\''b'` {
 		t.Errorf("shellQuote(a'b) = %q", got)

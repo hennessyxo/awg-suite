@@ -45,35 +45,34 @@ VPN runs on. Pick **one** of the two ways to set it up.
    | Linux — x86_64 | `awg-deploy-linux-amd64` |
    | Linux — ARM | `awg-deploy-linux-arm64` |
 
-2. Run it from a terminal, pointing at your server:
+2. **Just run it with no arguments** — a guided wizard asks for your server
+   address and password, checks whether AmneziaWG is installed (offers to install
+   it), saves the first client config + QR, and then shows a management menu
+   (add / remove / list clients, monitoring, full server menu, uninstall):
 
-   **Windows** (PowerShell / Windows Terminal):
+   **Windows** — double-click the `.exe`, or in PowerShell:
    ```powershell
-   .\awg-deploy-windows-amd64.exe install root@YOUR_SERVER_IP --preset mobile
+   .\awg-deploy-windows-amd64.exe
    ```
 
    **macOS / Linux:**
    ```bash
    chmod +x ./awg-deploy-darwin-arm64
    xattr -dr com.apple.quarantine ./awg-deploy-darwin-arm64   # macOS only: clear Gatekeeper
-   ./awg-deploy-darwin-arm64 install root@YOUR_SERVER_IP --preset mobile
+   ./awg-deploy-darwin-arm64
    ```
-
-   It asks for your SSH password (or use `--identity ~/.ssh/id_ed25519`), installs
-   AmneziaWG over SSH, saves the client `.conf` and prints a QR code. The installer
-   script is **embedded in the binary** — nothing to download on the server.
 
    > macOS may say "cannot verify the developer" (the binary is unsigned). Either
    > run the `xattr` command above, or right-click the file in Finder → **Open**.
 
-3. Manage it the same way:
+3. (Advanced) The same actions are also available as direct commands for scripts:
    ```bash
-   awg-deploy add-client    root@YOUR_SERVER_IP laptop   # new client + QR
-   awg-deploy list          root@YOUR_SERVER_IP          # list clients
-   awg-deploy remove-client root@YOUR_SERVER_IP laptop   # delete a client
-   awg-deploy menu          root@YOUR_SERVER_IP          # interactive menu over SSH
-   awg-deploy monitor       root@YOUR_SERVER_IP          # live dashboard
-   awg-deploy uninstall     root@YOUR_SERVER_IP          # remove everything (asks first)
+   awg-deploy install      root@YOUR_SERVER_IP --preset mobile
+   awg-deploy add-client   root@YOUR_SERVER_IP laptop
+   awg-deploy list         root@YOUR_SERVER_IP
+   awg-deploy remove-client root@YOUR_SERVER_IP laptop
+   awg-deploy monitor      root@YOUR_SERVER_IP
+   awg-deploy uninstall    root@YOUR_SERVER_IP
    ```
 
 See [`docs/DEPLOY.md`](docs/DEPLOY.md) for all flags.
