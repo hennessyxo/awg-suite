@@ -9,8 +9,8 @@
 ![platform](https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-orange)
 
 `awg-deploy` embeds the installer script and pipes it to the server over SSH,
-runs it non-interactively, then pulls back the client config and prints a QR code
-in your terminal. No need to SSH in by hand or know any Linux.
+runs it non-interactively, then pulls back the client config, saves it as a
+`.conf`, and opens a scannable QR image. No need to SSH in by hand or know any Linux.
 
 ## Download
 
@@ -44,28 +44,28 @@ xattr -dr com.apple.quarantine ./awg-deploy-darwin-arm64
 
 ```bash
 # Установить VPN на сервер (спросит SSH-пароль, если не указан ключ):
-awg-deploy install root@203.0.113.7 --preset mobile --client phone
+awg-deploy install root@YOUR_SERVER_IP --preset mobile --client phone
 
 # С SSH-ключом и нестандартным SSH-портом:
-awg-deploy install root@203.0.113.7:2222 --identity ~/.ssh/id_ed25519
+awg-deploy install root@YOUR_SERVER_IP:2222 --identity ~/.ssh/id_ed25519
 
 # Добавить ещё клиента (печатает его конфиг + QR):
-awg-deploy add-client root@203.0.113.7 laptop
+awg-deploy add-client root@YOUR_SERVER_IP laptop
 
 # Список клиентов:
-awg-deploy list root@203.0.113.7
+awg-deploy list root@YOUR_SERVER_IP
 
 # Удалить клиента:
-awg-deploy remove-client root@203.0.113.7 laptop
+awg-deploy remove-client root@YOUR_SERVER_IP laptop
 
 # Интерактивное меню сервера прямо в твоём терминале (по SSH):
-awg-deploy menu root@203.0.113.7
+awg-deploy menu root@YOUR_SERVER_IP
 
 # Живой мониторинг сервера прямо из своего терминала:
-awg-deploy monitor root@203.0.113.7
+awg-deploy monitor root@YOUR_SERVER_IP
 
 # Полностью удалить AmneziaWG с сервера (спросит подтверждение):
-awg-deploy uninstall root@203.0.113.7
+awg-deploy uninstall root@YOUR_SERVER_IP
 ```
 
 > Повторный `install` на уже настроенном сервере ничего не ломает — он
@@ -76,7 +76,7 @@ awg-deploy uninstall root@203.0.113.7
 On Windows just run the `.exe` from a terminal (PowerShell/Windows Terminal):
 
 ```powershell
-.\awg-deploy-windows-amd64.exe install root@203.0.113.7 --preset mobile
+.\awg-deploy-windows-amd64.exe install root@YOUR_SERVER_IP --preset mobile
 ```
 
 ### install flags
@@ -107,7 +107,7 @@ awg-deploy ──SSH──> server
    │  pipes embedded amneziawg-install.sh to `bash -s -- --yes`
    │  passes settings via AWG_* env vars (non-interactive mode)
    │  captures the fenced client config from stdout
-   └─ saves <name>.conf locally + renders a QR in the terminal
+   └─ saves <name>.conf + <name>.png (QR) locally and opens the image
 ```
 
 `monitor` runs `awg show <iface> dump` over SSH on each tick and renders the same
