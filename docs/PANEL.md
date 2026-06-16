@@ -19,6 +19,8 @@ clients in the browser. Built on the same `awg` parsing core as `awg-monitor`.
   фоновый enforcer считает трафик (с учётом сброса счётчиков при перезапуске) и сам
   **отключает** истёкших и превысивших квоту клиентов — они сохраняются и их можно
   **включить обратно** (при включении истёкший срок снимается, переполненная квота обнуляется)
+- 🐢 **Ограничение скорости**: задаёшь лимит в Мбит/с — фоновый шейпер на `tc`
+  режет отдачу (HTB-класс на IP клиента) и приём (ingress-police), вместо отключения
 - 📦 **Один бинарник**: HTML/CSS/htmx вшиты через `embed` — нечего деплоить отдельно
 
 ## Install / Установка
@@ -74,12 +76,14 @@ internal/
 ├── awgctl/                  # control plane (params, peer add/remove, FileController)
 ├── auth/                    # bcrypt + in-memory sessions + CSRF
 ├── lifecycle/               # quota/expiry store, usage accounting, rule engine
+├── shaper/                  # tc command planner (per-client bandwidth caps)
 ├── server/                  # routing, middleware, handlers, rate tracker, enforcer
 └── web/                     # embedded templates + static (htmx, CSS)
 ```
 
 The enforcer (in `server`) reconciles every 30s: accounts traffic into the
-`lifecycle` store, then disables over-quota and deletes expired clients.
+`lifecycle` store, then disables over-quota and expired clients. Bandwidth caps
+are re-applied via `shaper` on every change and at startup.
 
 Pure logic (`awgctl`, `auth`) and HTTP handlers (against a fake `Controller`) are
 unit-tested; run `go test ./...`.

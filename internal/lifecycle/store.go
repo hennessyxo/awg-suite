@@ -26,6 +26,7 @@ type Record struct {
 	ExpiresAt  *time.Time `json:"expires_at,omitempty"` // nil = never
 	QuotaBytes uint64     `json:"quota_bytes"`          // 0 = unlimited
 	UsedBytes  uint64     `json:"used_bytes"`
+	SpeedMbit  int        `json:"speed_mbit"` // bandwidth cap in Mbit/s (0 = unlimited)
 	LastRx     uint64     `json:"last_rx"`
 	LastTx     uint64     `json:"last_tx"`
 	Disabled   bool       `json:"disabled"`

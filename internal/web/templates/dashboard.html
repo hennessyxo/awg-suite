@@ -28,6 +28,7 @@
                  pattern="[A-Za-z0-9_-]{1,32}" required>
           <input type="number" name="expires_days" min="1" placeholder="срок, дней" title="через сколько дней отключить (пусто = бессрочно); потом можно включить обратно">
           <input type="number" name="quota_gb" min="1" step="1" placeholder="квота, ГБ" title="лимит трафика в ГБ (пусто = без лимита)">
+          <input type="number" name="speed_mbit" min="1" step="1" placeholder="скорость, Мбит/с" title="ограничение скорости в Мбит/с (пусто = без лимита)">
           <button type="submit">+ Добавить</button>
         </form>
       </div>

@@ -76,6 +76,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("awg-panel: %v", err)
 	}
+	srv.ReconcileShaper() // re-apply bandwidth caps after a restart
 	srv.StartEnforcer(context.Background(), enforceInterval)
 
 	httpSrv := &http.Server{

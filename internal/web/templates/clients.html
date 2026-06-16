@@ -11,7 +11,7 @@
     <tr>
       <th></th><th>Клиент</th><th>Endpoint</th>
       <th class="r">↓ скорость</th><th class="r">↑ скорость</th>
-      <th class="r">квота</th><th class="r">срок</th>
+      <th class="r">лимит</th><th class="r">квота</th><th class="r">срок</th>
       <th class="r">handshake</th><th></th>
     </tr>
   </thead>
@@ -23,6 +23,7 @@
       <td class="mono dim">{{.Endpoint}}</td>
       <td class="mono r">{{.RateRx}}</td>
       <td class="mono r">{{.RateTx}}</td>
+      <td class="mono r dim">{{if .Speed}}{{.Speed}}{{else}}∞{{end}}</td>
       <td class="mono r dim">{{if .Usage}}{{.Usage}}{{else}}∞{{end}}</td>
       <td class="mono r dim">{{if .Expires}}{{.Expires}}{{else}}—{{end}}</td>
       <td class="mono r dim">{{.HandshakeAgo}}</td>
@@ -47,7 +48,7 @@
       </td>
     </tr>
   {{else}}
-    <tr><td colspan="9" class="muted">пока нет клиентов — добавь первого выше</td></tr>
+    <tr><td colspan="10" class="muted">пока нет клиентов — добавь первого выше</td></tr>
   {{end}}
   </tbody>
 </table>

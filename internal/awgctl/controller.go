@@ -22,6 +22,7 @@ type Client struct {
 type AddOptions struct {
 	ExpiresIn  time.Duration // 0 = never expires
 	QuotaBytes uint64        // 0 = unlimited
+	SpeedMbit  int           // bandwidth cap in Mbit/s (0 = unlimited)
 }
 
 // Controller is the panel's view of the running AmneziaWG server. It is an
@@ -212,6 +213,7 @@ func (c FileController) record(name, pub string, octet int, block string, opts A
 		PeerBlock:  block,
 		CreatedAt:  time.Now(),
 		QuotaBytes: opts.QuotaBytes,
+		SpeedMbit:  opts.SpeedMbit,
 	}
 	if opts.ExpiresIn > 0 {
 		exp := time.Now().Add(opts.ExpiresIn)

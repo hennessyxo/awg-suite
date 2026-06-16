@@ -639,6 +639,8 @@ installMonitor() {
 installPanel() {
 	loadParams
 	command -v openssl >/dev/null 2>&1 || apt-get install -y -qq openssl >/dev/null 2>&1 || true
+	# tc (iproute2) is needed for per-client speed limits; usually already present.
+	command -v tc >/dev/null 2>&1 || apt-get install -y -qq iproute2 >/dev/null 2>&1 || true
 
 	if [[ ! -x "${PANEL_BIN}" ]]; then
 		fetchGoBinary panel "${PANEL_BIN}" || return 1

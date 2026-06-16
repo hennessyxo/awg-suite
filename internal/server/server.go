@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"html/template"
 	"io/fs"
+	"log"
 	"net/http"
 	"sort"
 	"strconv"
@@ -21,10 +22,14 @@ import (
 	"github.com/hennessyxo/amneziawg-installer/internal/awgctl"
 	"github.com/hennessyxo/amneziawg-installer/internal/format"
 	"github.com/hennessyxo/amneziawg-installer/internal/lifecycle"
+	"github.com/hennessyxo/amneziawg-installer/internal/shaper"
 	"github.com/hennessyxo/amneziawg-installer/internal/web"
 )
 
-const cookieName = "awgsess"
+const (
+	cookieName = "awgsess"
+	subnetBase = "10.66.66." // VPN subnet prefix used for tc filters
+)
 
 // Server holds the panel's dependencies and HTTP routes.
 type Server struct {
@@ -93,13 +98,36 @@ func (s *Server) enforceOnce() {
 	_ = s.store.ApplyUsage(transfers)
 
 	now := time.Now()
+	changed := false
 	for _, rec := range s.store.List() {
 		switch lifecycle.Evaluate(rec, now) {
 		case lifecycle.ActionDelete:
 			_ = s.ctrl.RevokeClient(rec.Name)
+			changed = true
 		case lifecycle.ActionDisable:
 			_ = s.ctrl.DisableClient(rec.Name)
+			changed = true
 		}
+	}
+	if changed {
+		s.ReconcileShaper() // drop tc rules for clients just disabled/removed
+	}
+}
+
+// ReconcileShaper rebuilds tc bandwidth caps from the lifecycle store. It is
+// best-effort (logged, not fatal): tc needs root and the kernel HTB module.
+func (s *Server) ReconcileShaper() {
+	if s.store == nil {
+		return
+	}
+	var limits []shaper.Limit
+	for _, r := range s.store.List() {
+		if !r.Disabled && r.SpeedMbit > 0 {
+			limits = append(limits, shaper.Limit{Octet: r.Octet, Mbit: r.SpeedMbit})
+		}
+	}
+	if err := shaper.Apply(shaper.Plan(s.iface, subnetBase, limits)); err != nil {
+		log.Printf("awg-panel: shaper reconcile: %v", err)
 	}
 }
 
@@ -228,6 +256,7 @@ func (s *Server) addClient(w http.ResponseWriter, r *http.Request) {
 	opts := awgctl.AddOptions{
 		ExpiresIn:  daysToDuration(r.FormValue("expires_days")),
 		QuotaBytes: gbToBytes(r.FormValue("quota_gb")),
+		SpeedMbit:  atoiNonNeg(r.FormValue("speed_mbit")),
 	}
 	client, err := s.ctrl.AddClient(name, opts)
 	if err != nil {
@@ -235,6 +264,7 @@ func (s *Server) addClient(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, `<div class="created"><div class="created-head">Ошибка: %s</div></div>`, template.HTMLEscapeString(err.Error()))
 		return
 	}
+	s.ReconcileShaper() // apply the new client's speed cap, if any
 	s.render(w, "created", map[string]any{"Name": client.Name, "Config": client.Config})
 }
 
@@ -249,6 +279,7 @@ func (s *Server) revokeClient(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, `<p class="err">%s</p>`, template.HTMLEscapeString(err.Error()))
 		return
 	}
+	s.ReconcileShaper()
 	s.renderClients(w, r)
 }
 
@@ -271,6 +302,7 @@ func (s *Server) toggleClient(enable bool) http.HandlerFunc {
 			fmt.Fprintf(w, `<p class="err">%s</p>`, template.HTMLEscapeString(err.Error()))
 			return
 		}
+		s.ReconcileShaper() // (re)apply or drop the client's speed cap
 		s.renderClients(w, r)
 	}
 }
@@ -320,7 +352,7 @@ type peerView struct {
 	Name, Endpoint               string
 	RateRx, RateTx, RxStr, TxStr string
 	HandshakeAgo                 string
-	Usage, Expires               string // lifecycle: "" when unlimited/never
+	Usage, Expires, Speed        string // lifecycle: "" when unlimited/never
 	Online, HasConfig, Disabled  bool
 }
 
@@ -378,6 +410,7 @@ func (s *Server) buildClientsData(csrf string) (clientsData, error) {
 			HandshakeAgo: format.Ago(p.LatestHandshake, now),
 			Usage:        usageStr(rec),
 			Expires:      expiresStr(rec, now),
+			Speed:        speedStr(rec),
 			Online:       p.Online(now),
 			HasConfig:    true,
 		})
@@ -395,6 +428,7 @@ func (s *Server) buildClientsData(csrf string) (clientsData, error) {
 				TxStr:     "—",
 				Usage:     usageStr(rec),
 				Expires:   expiresStr(rec, now),
+				Speed:     speedStr(rec),
 				Disabled:  true,
 				HasConfig: true,
 			})
@@ -433,6 +467,23 @@ func expiresStr(rec lifecycle.Record, now time.Time) string {
 		return fmt.Sprintf("%dд", days)
 	}
 	return fmt.Sprintf("%dч", int(d.Hours()))
+}
+
+// speedStr renders the bandwidth cap, or "" when unlimited.
+func speedStr(rec lifecycle.Record) string {
+	if rec.SpeedMbit <= 0 {
+		return ""
+	}
+	return fmt.Sprintf("%d Мбит/с", rec.SpeedMbit)
+}
+
+// atoiNonNeg parses a non-negative integer from a form field (0 on error).
+func atoiNonNeg(s string) int {
+	n, err := strconv.Atoi(strings.TrimSpace(s))
+	if err != nil || n < 0 {
+		return 0
+	}
+	return n
 }
 
 // daysToDuration parses a positive integer day count into a Duration (0 = none).
