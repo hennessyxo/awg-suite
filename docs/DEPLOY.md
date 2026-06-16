@@ -16,9 +16,29 @@ in your terminal. No need to SSH in by hand or know any Linux.
 
 Grab the binary for your OS from [Releases](https://github.com/hennessyxo/amneziawg-installer/releases):
 
-- Windows: `awg-deploy-windows-amd64.exe`
-- macOS: `awg-deploy-darwin-arm64` (Apple Silicon) / `-amd64` (Intel)
-- Linux: `awg-deploy-linux-amd64` / `-arm64`
+| Your computer / Твой компьютер | File / Файл |
+|--------------------------------|-------------|
+| Windows | `awg-deploy-windows-amd64.exe` |
+| macOS — Apple Silicon (M1–M5) | `awg-deploy-darwin-arm64` |
+| macOS — Intel | `awg-deploy-darwin-amd64` |
+| Linux — x86_64 | `awg-deploy-linux-amd64` |
+| Linux — ARM | `awg-deploy-linux-arm64` |
+
+> `darwin` = macOS. Качай под **свой** компьютер, а не под сервер — сервер
+> настраивается автоматически по SSH.
+
+### macOS: Gatekeeper
+
+Бинарник неподписанный, поэтому при первом запуске macOS его заблокирует. Сними
+карантин один раз:
+
+```bash
+chmod +x ./awg-deploy-darwin-arm64
+xattr -dr com.apple.quarantine ./awg-deploy-darwin-arm64
+```
+
+Либо: правый клик по файлу в Finder → **Открыть** → **Открыть**. (То же в
+`System Settings → Privacy & Security → Open Anyway`.)
 
 ## Usage / Использование
 

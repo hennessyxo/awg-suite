@@ -27,9 +27,56 @@ obfuscation, client management with QR codes — no Linux knowledge required.
 | `cmd/awg-panel` | Web panel (Go + htmx): auth, HTTPS, live dashboard, client management, **quotas, expiry, speed limits** |
 | `cmd/awg-deploy` | Cross-platform SSH installer — a **Windows `.exe`** (+ macOS/Linux) that sets everything up remotely |
 
-## ⚡ Quick start
+## 📥 Installation
 
-On a server (Ubuntu 22.04+/24.04 or Debian 12+), as root:
+You need a cheap VPS (Ubuntu 22.04+/24.04 or Debian 12+) — that's the server the
+VPN runs on. Pick **one** of the two ways to set it up.
+
+### Option A — from your own computer (easiest, no Linux needed)
+
+1. Download the `awg-deploy` binary for **your computer** from
+   [Releases](https://github.com/hennessyxo/amneziawg-installer/releases/latest):
+
+   | Your computer | File to download |
+   |---------------|------------------|
+   | Windows | `awg-deploy-windows-amd64.exe` |
+   | macOS — Apple Silicon (M1–M5) | `awg-deploy-darwin-arm64` |
+   | macOS — Intel | `awg-deploy-darwin-amd64` |
+   | Linux — x86_64 | `awg-deploy-linux-amd64` |
+   | Linux — ARM | `awg-deploy-linux-arm64` |
+
+2. Run it from a terminal, pointing at your server:
+
+   **Windows** (PowerShell / Windows Terminal):
+   ```powershell
+   .\awg-deploy-windows-amd64.exe install root@YOUR_SERVER_IP --preset mobile
+   ```
+
+   **macOS / Linux:**
+   ```bash
+   chmod +x ./awg-deploy-darwin-arm64
+   xattr -dr com.apple.quarantine ./awg-deploy-darwin-arm64   # macOS only: clear Gatekeeper
+   ./awg-deploy-darwin-arm64 install root@YOUR_SERVER_IP --preset mobile
+   ```
+
+   It asks for your SSH password (or use `--identity ~/.ssh/id_ed25519`), installs
+   AmneziaWG over SSH, saves the client `.conf` and prints a QR code. The installer
+   script is **embedded in the binary** — nothing to download on the server.
+
+   > macOS may say "cannot verify the developer" (the binary is unsigned). Either
+   > run the `xattr` command above, or right-click the file in Finder → **Open**.
+
+3. Manage it the same way:
+   ```bash
+   awg-deploy add-client root@YOUR_SERVER_IP laptop   # new client + QR
+   awg-deploy monitor   root@YOUR_SERVER_IP           # live dashboard in your terminal
+   ```
+
+See [`docs/DEPLOY.md`](docs/DEPLOY.md) for all flags.
+
+### Option B — directly on the server
+
+SSH into the server and run, as root:
 
 ```bash
 git clone https://github.com/hennessyxo/amneziawg-installer.git
@@ -37,29 +84,15 @@ cd amneziawg-installer
 sudo bash amneziawg-install.sh        # add --lang en for English UI
 ```
 
-The script asks a few questions (public IP, port, DNS, first client name, mobile
-preset), then prints a QR code to import into the **AmneziaVPN** app. Re-run the
-script anytime to open the management menu (clients, monitoring, web panel).
-
-### Install from Windows / over SSH
-
-Don't want to touch the server? Grab `awg-deploy` from
-[Releases](https://github.com/hennessyxo/amneziawg-installer/releases) — one
-binary (`.exe` for Windows, plus macOS/Linux):
-
-```bash
-awg-deploy install root@203.0.113.7 --preset mobile   # installs over SSH, prints QR
-awg-deploy add-client root@203.0.113.7 laptop         # new client + QR
-awg-deploy monitor root@203.0.113.7                   # live dashboard locally
-```
-
-The installer script is embedded in the binary — nothing to download on the
-server. See [`docs/DEPLOY.md`](docs/DEPLOY.md).
+Answer a few questions (public IP, port, DNS, first client, mobile preset) and
+scan the QR in the **AmneziaVPN** app. Re-run the script anytime for the
+management menu: add/remove clients, **monitoring** (option 6) and the
+**web panel** (option 7).
 
 ### Automation / non-interactive
 
 ```bash
-AWG_SERVER_IP=203.0.113.7 AWG_PORT=51820 AWG_PRESET=mobile AWG_CLIENT=phone \
+AWG_SERVER_IP=YOUR_SERVER_IP AWG_PORT=51820 AWG_PRESET=mobile AWG_CLIENT=phone \
   sudo -E bash amneziawg-install.sh --yes
 sudo bash amneziawg-install.sh --add-client laptop    # one client, then exit
 ```
