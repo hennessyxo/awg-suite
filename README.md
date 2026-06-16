@@ -163,6 +163,21 @@ sudo ./awg-monitor            # мониторинг awg0
 
 Подробнее — в [`docs/PANEL.md`](docs/PANEL.md).
 
+### 🪟 Установка из Windows / по SSH
+
+Не хочешь заходить на сервер руками? `awg-deploy` ([`cmd/awg-deploy`](cmd/awg-deploy)) —
+один бинарник (`.exe` для Windows, плюс mac/Linux): запускаешь, указываешь
+`user@host` и пароль/ключ — он сам ставит VPN по SSH, сохраняет клиентский `.conf`
+и рисует QR в терминале. Есть режим `monitor` — живой дашборд сервера у тебя локально.
+
+```bash
+awg-deploy install root@203.0.113.7 --preset mobile
+awg-deploy monitor root@203.0.113.7
+```
+
+Скрипт установщика встроен в бинарник — на сервер ничего качать не надо.
+Подробнее — в [`docs/DEPLOY.md`](docs/DEPLOY.md).
+
 ---
 
 ## 🗺️ Roadmap
@@ -178,7 +193,8 @@ sudo ./awg-monitor            # мониторинг awg0
       включить обратно — фоновый enforcer)
 - [x] **Ограничение скорости (`tc`)** — резать клиента до X Мбит/с (HTB на отдачу
       + ingress-police на приём); лимит задаётся при создании клиента
-- [ ] Кросс-платформенный SSH-установщик (`.exe` для Windows)
+- [x] **Кросс-платформенный SSH-установщик** ([`cmd/awg-deploy`](cmd/awg-deploy)):
+      `.exe` для Windows (+ mac/Linux) — ставит VPN по SSH, отдаёт конфиг+QR, режим мониторинга
 - [ ] Полный i18n (EN/RU): доки + установщик + панель
 
 ---

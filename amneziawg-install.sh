@@ -475,6 +475,14 @@ newClient() {
 	qrencode -t ANSIUTF8 <"${client_file}" || warn "qrencode недоступен — импортируй файл вручную."
 	echo
 	echo -e "Файл конфигурации: ${BOLD}${client_file}${NC}"
+
+	# For automation (the SSH deploy tool): emit the config fenced so it can be
+	# captured over SSH without guessing the file path.
+	if [[ "${AWG_PRINT_CONFIG:-0}" == "1" ]]; then
+		echo "-----BEGIN_AWG_CONF-----"
+		cat "${client_file}"
+		echo "-----END_AWG_CONF-----"
+	fi
 }
 
 listClients() {
