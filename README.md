@@ -81,6 +81,22 @@ sudo bash amneziawg-install.sh
 
 Появится меню управления.
 
+### Автоматизация / без вопросов
+
+Для скриптов и удалённой установки по SSH есть неинтерактивный режим — настройки
+берутся из переменных окружения `AWG_*`:
+
+```bash
+AWG_SERVER_IP=203.0.113.7 AWG_PORT=51820 AWG_PRESET=mobile AWG_CLIENT=phone \
+  sudo -E bash amneziawg-install.sh --yes
+
+# создать ещё клиента и выйти (печатает его конфиг + QR):
+sudo bash amneziawg-install.sh --add-client laptop
+```
+
+Поддерживаются: `AWG_SERVER_IP`, `AWG_SERVER_NIC`, `AWG_PORT`, `AWG_DNS1`,
+`AWG_DNS2`, `AWG_CLIENT`, `AWG_PRESET` (`default`|`mobile`).
+
 ---
 
 ## 📱 Client apps / Клиентские приложения

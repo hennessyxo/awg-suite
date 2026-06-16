@@ -47,6 +47,10 @@ ok()   { echo -e "${GREEN}✓${NC} $*"; }
 warn() { echo -e "${YELLOW}!${NC} $*"; }
 err()  { echo -e "${RED}✗${NC} $*" >&2; }
 
+# Runtime flags (overridable via CLI args; see parseArgs).
+NONINTERACTIVE=0
+ADD_CLIENT=""
+
 # ---------------------------------------------------------------------------
 # Pre-flight checks
 # ---------------------------------------------------------------------------
@@ -157,6 +161,22 @@ detectPublicNIC() {
 # Installation
 # ---------------------------------------------------------------------------
 installQuestions() {
+	# Non-interactive mode: take everything from AWG_* env vars (with sane
+	# defaults). Used by the SSH deploy tool so install runs without prompts.
+	if [[ "${NONINTERACTIVE}" == "1" ]]; then
+		SERVER_PUB_IP="${AWG_SERVER_IP:-$(detectPublicIP)}"
+		SERVER_PUB_NIC="${AWG_SERVER_NIC:-$(detectPublicNIC)}"
+		SERVER_PORT="${AWG_PORT:-$((RANDOM % 20000 + 40000))}"
+		CLIENT_DNS_1="${AWG_DNS1:-1.1.1.1}"
+		CLIENT_DNS_2="${AWG_DNS2:-1.0.0.1}"
+		FIRST_CLIENT="$(sanitizeName "${AWG_CLIENT:-phone}")"
+		PRESET="${AWG_PRESET:-default}"
+		SERVER_WG_IPV4="10.66.66.1"
+		SERVER_WG_IPV6="fd42:42:42::1"
+		msg "Неинтерактивная установка: ${SERVER_PUB_IP}:${SERVER_PORT}/udp, пресет ${PRESET}"
+		return 0
+	fi
+
 	echo
 	echo -e "${BOLD}AmneziaWG VPN — установка / installation${NC}"
 	echo "Ответь на несколько вопросов (Enter = значение по умолчанию)."
@@ -758,11 +778,39 @@ manageMenu() {
 # ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
+parseArgs() {
+	while [[ $# -gt 0 ]]; do
+		case "$1" in
+			-y | --yes) NONINTERACTIVE=1; shift ;;
+			--add-client) ADD_CLIENT="${2:-}"; shift 2 ;;
+			-h | --help)
+				echo "Usage: $0 [-y|--yes] [--add-client NAME]"
+				echo "  -y, --yes        неинтерактивная установка (настройки из AWG_* env)"
+				echo "  --add-client N   создать клиента N и выйти (для автоматизации/SSH)"
+				exit 0
+				;;
+			*) shift ;;
+		esac
+	done
+}
+
 main() {
+	parseArgs "$@"
 	checkRoot
 	checkVirt
 	checkOS
+
+	# Non-interactive client creation (used by the SSH deploy tool).
+	if [[ -n "${ADD_CLIENT}" ]]; then
+		newClient "${ADD_CLIENT}"
+		exit 0
+	fi
+
 	if [[ -f "${PARAMS_FILE}" ]]; then
+		if [[ "${NONINTERACTIVE}" == "1" ]]; then
+			ok "AmneziaWG уже установлен — пропускаю."
+			exit 0
+		fi
 		manageMenu
 	else
 		installAmneziaWG
