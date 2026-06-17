@@ -137,6 +137,19 @@ function initAuthTabs() {
   });
 }
 
+const MANAGE_TABS = ["clients", "monitor", "advanced"];
+
+function selectTab(name) {
+  document.querySelectorAll(".tab-btn").forEach((b) => b.classList.toggle("on", b.dataset.tab === name));
+  MANAGE_TABS.forEach((t) => $("tab-" + t).classList.toggle("hidden", t !== name));
+}
+
+function initTabs() {
+  document.querySelectorAll(".tab-btn").forEach((btn) => {
+    btn.addEventListener("click", () => selectTab(btn.dataset.tab));
+  });
+}
+
 // fillForm populates the connect form from a saved Prefs/Profile object.
 function fillForm(p) {
   if (!p) return;
@@ -250,6 +263,7 @@ async function refreshStatus() {
     if (status.installed) {
       hide($("block-install"));
       show($("block-manage"));
+      selectTab("clients");
       await refreshClients();
       await refreshPanel();
       await refreshHealth();
@@ -552,20 +566,21 @@ function showResult(res) {
   $("result").scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-function downloadConf() {
+async function downloadConf() {
   if (!lastResult) return;
-  const blob = new Blob([lastResult.conf], { type: "text/plain" });
-  const a = document.createElement("a");
-  a.href = URL.createObjectURL(blob);
-  a.download = lastResult.name + ".conf";
-  a.click();
-  URL.revokeObjectURL(a.href);
+  try {
+    const path = await backend().SaveConfig(lastResult.name, lastResult.conf);
+    if (path) toast("Сохранено: " + path, "ok");
+  } catch (err) {
+    toast("Не удалось сохранить: " + errMsg(err), "err");
+  }
 }
 
 // --- wire up ---------------------------------------------------------------
 
 window.addEventListener("DOMContentLoaded", () => {
   initAuthTabs();
+  initTabs();
   prefill();
   $("btn-connect").addEventListener("click", connect);
   $("password").addEventListener("keydown", (e) => { if (e.key === "Enter") connect(); });

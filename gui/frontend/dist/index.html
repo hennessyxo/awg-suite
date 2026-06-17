@@ -87,35 +87,47 @@
 
         <!-- 2b. Installed → manage -->
         <div id="block-manage" class="panel hidden">
-          <div id="health" class="health">
-            <span class="health-dot" id="health-dot"></span>
-            <span id="health-state">…</span>
-            <span class="health-sep">·</span>
-            <span id="health-clients"></span>
-            <span class="health-sep">·</span>
-            <span class="dim">аптайм <span id="health-uptime">—</span></span>
-            <span class="health-sep">·</span>
-            <span class="dim mono" id="health-version">—</span>
+          <div class="tabs">
+            <button class="tab-btn on" data-tab="clients">Клиенты</button>
+            <button class="tab-btn" data-tab="monitor">Мониторинг</button>
+            <button class="tab-btn" data-tab="advanced">Лимиты</button>
           </div>
 
-          <div class="panel-head">
-            <h2>Клиенты</h2>
-            <form id="add-form" class="add">
-              <input id="new-client" type="text" placeholder="имя нового клиента" autocomplete="off" />
-              <button class="primary" type="submit">Добавить</button>
-            </form>
-          </div>
-          <p class="hint-profile dim">Один профиль = одно устройство. Для каждого устройства создавайте свой профиль, иначе будет конфликт.</p>
-          <div class="table-wrap">
-            <table class="clients">
-              <thead><tr><th>Имя</th><th class="r">Действия</th></tr></thead>
-              <tbody id="clients-body"></tbody>
-            </table>
-          </div>
-          <!-- live traffic mini-view -->
-          <div id="traffic-box" class="subpanel">
+          <!-- TAB: clients -->
+          <div id="tab-clients" class="tab-pane">
             <div class="panel-head">
-              <h3>Трафик <span id="traffic-summary" class="dim"></span></h3>
+              <h2>Клиенты</h2>
+              <form id="add-form" class="add">
+                <input id="new-client" type="text" placeholder="имя нового клиента" autocomplete="off" />
+                <button class="primary" type="submit">Добавить</button>
+              </form>
+            </div>
+            <p class="hint-profile dim">Один профиль = одно устройство. Для каждого устройства создавайте свой профиль, иначе будет конфликт.</p>
+            <div class="table-wrap">
+              <table class="clients">
+                <thead><tr><th>Имя</th><th class="r">Действия</th></tr></thead>
+                <tbody id="clients-body"></tbody>
+              </table>
+            </div>
+            <div class="manage-footer">
+              <button id="btn-uninstall" class="danger">Удалить AmneziaWG полностью</button>
+            </div>
+          </div>
+
+          <!-- TAB: monitoring -->
+          <div id="tab-monitor" class="tab-pane hidden">
+            <div id="health" class="health">
+              <span class="health-dot" id="health-dot"></span>
+              <span id="health-state">…</span>
+              <span class="health-sep">·</span>
+              <span id="health-clients"></span>
+              <span class="health-sep">·</span>
+              <span class="dim">аптайм <span id="health-uptime">—</span></span>
+              <span class="health-sep">·</span>
+              <span class="dim mono" id="health-version">—</span>
+            </div>
+            <div class="panel-head">
+              <h2>Трафик <span id="traffic-summary" class="dim"></span></h2>
             </div>
             <div class="table-wrap">
               <table class="clients traffic">
@@ -125,10 +137,10 @@
             </div>
           </div>
 
-          <!-- web panel: advanced per-client limits (speed/days/quota) -->
-          <div id="panel-box" class="subpanel">
-            <h3>Лимиты и расширенное управление</h3>
-            <p class="dim">Скорость, срок действия и квота трафика на клиента настраиваются в веб-панели.</p>
+          <!-- TAB: advanced (web panel: speed/days/quota) -->
+          <div id="tab-advanced" class="tab-pane hidden">
+            <h2>Лимиты на клиента</h2>
+            <p class="dim">Ограничение скорости, срок действия и квота трафика на каждого клиента настраиваются в веб-панели — у неё для этого есть постоянно работающая на сервере служба. Из приложения это включить нельзя: оно не запущено круглосуточно.</p>
 
             <div id="panel-absent" class="hidden">
               <div class="panel-install">
@@ -146,10 +158,6 @@
               </div>
               <p class="dim" style="margin-top:.6rem">Браузер один раз предупредит про самоподписанный сертификат — это нормально, трафик шифруется.</p>
             </div>
-          </div>
-
-          <div class="manage-footer">
-            <button id="btn-uninstall" class="danger">Удалить AmneziaWG полностью</button>
           </div>
         </div>
 

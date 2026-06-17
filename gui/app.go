@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"sort"
 	"strings"
 	"sync"
@@ -229,6 +230,29 @@ func (a *App) AddClient(name string) (ClientResult, error) {
 		return ClientResult{}, fmt.Errorf("создание клиента не удалось: %w", err)
 	}
 	return buildClientResult(name, out)
+}
+
+// SaveConfig opens a native Save dialog and writes the client config to the
+// chosen path. The blob/<a download> trick doesn't work inside the webview, so
+// saving goes through the Wails runtime instead. Returns "" path on cancel.
+func (a *App) SaveConfig(name, conf string) (string, error) {
+	if a.ctx == nil {
+		return "", fmt.Errorf("приложение не готово")
+	}
+	path, err := wruntime.SaveFileDialog(a.ctx, wruntime.SaveDialogOptions{
+		DefaultFilename: name + ".conf",
+		Title:           "Сохранить конфиг клиента",
+	})
+	if err != nil {
+		return "", fmt.Errorf("диалог сохранения не удался: %w", err)
+	}
+	if path == "" {
+		return "", nil // user cancelled
+	}
+	if err := os.WriteFile(path, []byte(conf), 0o600); err != nil {
+		return "", fmt.Errorf("не удалось сохранить файл: %w", err)
+	}
+	return path, nil
 }
 
 // ClientConfig reads an existing client's mirrored .conf from the server and
