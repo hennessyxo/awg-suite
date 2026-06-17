@@ -62,16 +62,32 @@ function appendLog(text) {
 
 // --- connect ---------------------------------------------------------------
 
+function selectAuth(mode) {
+  authMode = mode;
+  document.querySelectorAll(".tab").forEach((t) => t.classList.toggle("on", t.dataset.auth === mode));
+  $("field-password").classList.toggle("hidden", mode !== "password");
+  $("field-key").classList.toggle("hidden", mode !== "key");
+}
+
 function initAuthTabs() {
   document.querySelectorAll(".tab").forEach((tab) => {
-    tab.addEventListener("click", () => {
-      document.querySelectorAll(".tab").forEach((t) => t.classList.remove("on"));
-      tab.classList.add("on");
-      authMode = tab.dataset.auth;
-      $("field-password").classList.toggle("hidden", authMode !== "password");
-      $("field-key").classList.toggle("hidden", authMode !== "key");
-    });
+    tab.addEventListener("click", () => selectAuth(tab.dataset.auth));
   });
+}
+
+// prefill restores the saved connection (password from the OS secret store).
+async function prefill() {
+  try {
+    const p = await backend().LoadPrefs();
+    if (p.host) $("host").value = p.host;
+    if (p.user) $("user").value = p.user;
+    if (p.identityPath) $("identity").value = p.identityPath;
+    if (p.authMode) selectAuth(p.authMode);
+    $("remember").checked = !!p.remember;
+    if (p.password) $("password").value = p.password;
+  } catch (_) {
+    /* no saved prefs yet — ignore */
+  }
 }
 
 async function connect() {
@@ -84,6 +100,8 @@ async function connect() {
     user: $("user").value.trim() || "root",
     password: authMode === "password" ? $("password").value : "",
     identityPath: authMode === "key" ? $("identity").value.trim() : "",
+    authMode,
+    remember: $("remember").checked,
   };
 
   busy(true, "Подключаюсь к серверу…");
@@ -337,6 +355,7 @@ function downloadConf() {
 
 window.addEventListener("DOMContentLoaded", () => {
   initAuthTabs();
+  prefill();
   $("btn-connect").addEventListener("click", connect);
   $("password").addEventListener("keydown", (e) => { if (e.key === "Enter") connect(); });
   $("btn-install").addEventListener("click", install);

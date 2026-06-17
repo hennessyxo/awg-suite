@@ -67,6 +67,10 @@ input, select {
 }
 input:focus, select:focus { outline: none; border-color: var(--accent-dim); }
 
+.check { flex-direction: row; align-items: center; gap: 0.5rem; color: var(--text); font-size: 0.85rem; cursor: pointer; }
+.check input { width: auto; }
+.check span { color: var(--muted); }
+
 .auth-tabs { display: flex; gap: 0.4rem; }
 .tab {
   background: transparent; border: 1px solid var(--line); color: var(--muted);

@@ -54,6 +54,8 @@ type ConnectRequest struct {
 	User         string `json:"user"`
 	Password     string `json:"password"`
 	IdentityPath string `json:"identityPath"`
+	AuthMode     string `json:"authMode"` // "password" | "key"
+	Remember     bool   `json:"remember"`
 }
 
 // InstallRequest carries the install options from the UI.
@@ -109,7 +111,46 @@ func (a *App) Connect(req ConnectRequest) error {
 	a.client = cl
 	a.target = t
 	a.mu.Unlock()
+
+	a.persistPrefs(req, host, user)
 	return nil
+}
+
+// persistPrefs saves non-secret connection fields to disk and, when the user
+// asked to remember, the password to the OS secret store (never to disk).
+func (a *App) persistPrefs(req ConnectRequest, host, user string) {
+	_ = saveDiskPrefs(diskPrefs{
+		Host:         host,
+		User:         user,
+		AuthMode:     req.AuthMode,
+		IdentityPath: strings.TrimSpace(req.IdentityPath),
+		Remember:     req.Remember,
+	})
+	if req.Remember && req.AuthMode != "key" && req.Password != "" {
+		_ = rememberPassword(user, host, req.Password)
+	} else {
+		forgetPassword(user, host)
+	}
+}
+
+// LoadPrefs returns the saved connection fields for prefilling the form, with
+// the password pulled from the OS secret store only if "remember" was set.
+func (a *App) LoadPrefs() (Prefs, error) {
+	dp, err := loadDiskPrefs()
+	if err != nil {
+		return Prefs{}, err
+	}
+	p := Prefs{
+		Host:         dp.Host,
+		User:         dp.User,
+		AuthMode:     dp.AuthMode,
+		IdentityPath: dp.IdentityPath,
+		Remember:     dp.Remember,
+	}
+	if dp.Remember && dp.AuthMode != "key" && dp.Host != "" {
+		p.Password = loadPassword(dp.User, dp.Host)
+	}
+	return p, nil
 }
 
 // Disconnect closes the SSH session.
