@@ -21,7 +21,7 @@ jobs:
       - name: Ensure release exists
         run: |
           notes=$(cat <<'EOF'
-          ## Что скачать
+          ## Что скачать (RU)
 
           **🖱️ Приложение (проще всего):**
           - **macOS** — `awg-gui-macos.zip`
@@ -32,6 +32,20 @@ jobs:
 
           Остальные файлы (`awg-monitor-…`, `awg-panel-…`) — служебные: их сам
           скачивает установщик на сервер, вручную качать не нужно.
+
+          ---
+
+          ## What to download (EN)
+
+          **🖱️ Desktop app (easiest):**
+          - **macOS** — `awg-gui-macos.zip`
+          - **Windows** — `awg-gui-windows-amd64.exe`
+
+          **⌨️ Command line (advanced):** `awg-deploy-…` for your OS
+          (`.tar.gz` for mac/Linux, `.exe` for Windows).
+
+          The other files (`awg-monitor-…`, `awg-panel-…`) are server-side helpers
+          the installer downloads automatically — no need to grab them by hand.
           EOF
           )
           gh release view "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" >/dev/null 2>&1 \
