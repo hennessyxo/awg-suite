@@ -92,7 +92,6 @@ t() {
 			m_uninstall)  echo "Remove AmneziaWG completely" ;;
 			m_exit)       echo "Exit" ;;
 			choose)       echo "Choice" ;;
-			q_mobile)     echo "Enable the mobile preset (MTU 1280, Jc=3 for 4G/LTE)? [y/N]: " ;;
 			confirm)      echo "Continue? [Y/n]: " ;;
 			cancelled)    echo "Cancelled." ;;
 			done_title)   echo "Done! AmneziaWG server is up." ;;
@@ -107,7 +106,7 @@ t() {
 			mon_removed)  echo "awg-monitor removed." ;;
 			panel_offer)  echo "Install the web panel for easy browser management? [Y/n]: " ;;
 			one_profile)  echo "One profile = one device. Make a separate client for each phone/PC, or connections will clash." ;;
-			qr_note)      echo "The QR scans only in the AmneziaWG app. In AmneziaVPN — open the .conf file instead." ;;
+			qr_note)      echo "Open the AmneziaWG app and scan the QR (or import the .conf file). iOS — App Store: https://apps.apple.com/app/amneziawg/id6478942365 ; Android/Windows: https://amnezia.org/downloads" ;;
 			first_conf)   echo "First client config:" ;;
 			panel_at)     echo "Web panel:" ;;
 			add_more)     echo "Add more clients from the menu or the web panel." ;;
@@ -130,7 +129,6 @@ t() {
 			m_uninstall)  echo "Удалить AmneziaWG полностью" ;;
 			m_exit)       echo "Выход" ;;
 			choose)       echo "Выбор" ;;
-			q_mobile)     echo "Включить мобильный пресет (MTU 1280, Jc=3 для 4G/LTE)? [y/N]: " ;;
 			confirm)      echo "Продолжить? [Y/n]: " ;;
 			cancelled)    echo "Отменено." ;;
 			done_title)   echo "Готово! Сервер AmneziaWG развёрнут." ;;
@@ -145,7 +143,7 @@ t() {
 			mon_removed)  echo "awg-monitor удалён." ;;
 			panel_offer)  echo "Поставить веб-панель для удобного управления в браузере? [Y/n]: " ;;
 			one_profile)  echo "Один профиль — одно устройство. Для каждого телефона/ПК создавай отдельного клиента, иначе соединения конфликтуют." ;;
-			qr_note)      echo "QR сканируется только приложением AmneziaWG. В AmneziaVPN — открой файл .conf." ;;
+			qr_note)      echo "Открой приложение AmneziaWG и отсканируй QR (или импортируй файл .conf). iOS — App Store: https://apps.apple.com/app/amneziawg/id6478942365 ; Android/Windows: https://amnezia.org/downloads" ;;
 			first_conf)   echo "Конфиг первого клиента:" ;;
 			panel_at)     echo "Веб-панель:" ;;
 			add_more)     echo "Добавляй клиентов в меню или в веб-панели." ;;
@@ -223,22 +221,15 @@ generateHeaders() {
 }
 
 # Generate the full obfuscation parameter set, respecting AmneziaWG constraints.
-# Honors the chosen preset (default | mobile). Mobile networks (4G/LTE) often
-# have a lower effective MTU and are picky about junk-packet sizing, which is the
-# usual cause of "connected but no internet" on cellular — so the mobile preset
-# uses MTU=1280 (RFC 8200 minimum, passes everywhere) and Jc=3.
+# Uses safe values that work on BOTH cellular (4G/LTE) and broadband/PC: MTU=1280
+# (RFC 8200 minimum, passes everywhere) and Jc=3. A lower MTU + gentle junk sizing
+# is the usual fix for "connected but no internet" on mobile networks and costs
+# nothing meaningful on a desktop link — so there is a single, universal profile.
 generateObfuscation() {
-	if [[ "${PRESET:-default}" == "mobile" ]]; then
-		JC=3                            # fixed: Jc>3 often fails first connect on cellular
-		JMIN=$(randInt 30 50)
-		JMAX=$(( JMIN + 20 + RANDOM % 61 ))   # Jmin + 20..80
-		CLIENT_MTU=1280
-	else
-		JC=$(randInt 4 12)              # junk packet count
-		JMIN=$(randInt 40 80)
-		JMAX=$(( JMIN + 80 + RANDOM % 121 ))  # Jmin + 80..200
-		CLIENT_MTU=1420                 # standard WireGuard MTU
-	fi
+	JC=3                              # fixed: Jc>3 often fails first connect on cellular
+	JMIN=$(randInt 30 50)
+	JMAX=$(( JMIN + 20 + RANDOM % 61 ))   # Jmin + 20..80
+	CLIENT_MTU=1280
 	S1=$(randInt 15 150)          # init packet junk size
 	S2=$(randInt 15 150)          # response packet junk size
 	# Constraint: S1 + 56 must not equal S2
@@ -264,6 +255,30 @@ detectPublicNIC() {
 	ip -4 route ls 2>/dev/null | awk '/default/ {for(i=1;i<=NF;i++) if($i=="dev"){print $(i+1); exit}}'
 }
 
+# portInUse reports whether a UDP port is already bound on the server.
+portInUse() {
+	local p="$1"
+	if command -v ss >/dev/null 2>&1; then
+		ss -lun 2>/dev/null | awk '{print $5}' | grep -qE "[:.]${p}\$"
+	elif command -v netstat >/dev/null 2>&1; then
+		netstat -lun 2>/dev/null | awk '{print $4}' | grep -qE "[:.]${p}\$"
+	else
+		return 1   # can't check → assume free
+	fi
+}
+
+# pickFreePort returns a random free UDP port in [40000,59999], avoiding any that
+# are already bound (so we never collide with another service on the server).
+pickFreePort() {
+	local p tries=0
+	while :; do
+		p=$((RANDOM % 20000 + 40000))
+		portInUse "${p}" || { echo "${p}"; return 0; }
+		tries=$((tries + 1))
+		[[ "${tries}" -ge 50 ]] && { echo "${p}"; return 0; }
+	done
+}
+
 # ---------------------------------------------------------------------------
 # Installation
 # ---------------------------------------------------------------------------
@@ -273,14 +288,18 @@ installQuestions() {
 	if [[ "${NONINTERACTIVE}" == "1" ]]; then
 		SERVER_PUB_IP="${AWG_SERVER_IP:-$(detectPublicIP)}"
 		SERVER_PUB_NIC="${AWG_SERVER_NIC:-$(detectPublicNIC)}"
-		SERVER_PORT="${AWG_PORT:-$((RANDOM % 20000 + 40000))}"
+		SERVER_PORT="${AWG_PORT:-$(pickFreePort)}"
+		if portInUse "${SERVER_PORT}"; then
+			warn "Порт ${SERVER_PORT}/udp уже занят — выбираю свободный."
+			SERVER_PORT="$(pickFreePort)"
+		fi
 		CLIENT_DNS_1="${AWG_DNS1:-1.1.1.1}"
 		CLIENT_DNS_2="${AWG_DNS2:-1.0.0.1}"
 		FIRST_CLIENT="$(sanitizeName "${AWG_CLIENT:-phone}")"
-		PRESET="${AWG_PRESET:-default}"
+		PRESET="mobile"
 		SERVER_WG_IPV4="10.66.66.1"
 		SERVER_WG_IPV6="fd42:42:42::1"
-		msg "Неинтерактивная установка: ${SERVER_PUB_IP}:${SERVER_PORT}/udp, пресет ${PRESET}"
+		msg "Неинтерактивная установка: ${SERVER_PUB_IP}:${SERVER_PORT}/udp"
 		return 0
 	fi
 
@@ -299,9 +318,14 @@ installQuestions() {
 	read -rp "Внешний сетевой интерфейс [${default_nic}]: " SERVER_PUB_NIC
 	SERVER_PUB_NIC="${SERVER_PUB_NIC:-$default_nic}"
 
-	local default_port=$((RANDOM % 20000 + 40000))
+	local default_port; default_port=$(pickFreePort)
 	read -rp "Порт AmneziaWG (UDP) [${default_port}]: " SERVER_PORT
 	SERVER_PORT="${SERVER_PORT:-$default_port}"
+	if portInUse "${SERVER_PORT}"; then
+		warn "Порт ${SERVER_PORT}/udp уже занят на сервере."
+		read -rp "Выбрать свободный автоматически? [Y/n]: " pchg
+		[[ "${pchg,,}" != "n" ]] && SERVER_PORT="$(pickFreePort)" && msg "Использую порт ${SERVER_PORT}/udp."
+	fi
 
 	read -rp "DNS для клиентов [1.1.1.1]: " CLIENT_DNS_1
 	CLIENT_DNS_1="${CLIENT_DNS_1:-1.1.1.1}"
@@ -312,13 +336,8 @@ installQuestions() {
 	FIRST_CLIENT="${FIRST_CLIENT:-phone}"
 	FIRST_CLIENT=$(sanitizeName "${FIRST_CLIENT}")
 
-	echo
-	if [[ "${LANG_CODE}" == "ru" ]]; then
-		echo "Мобильный пресет (MTU 1280 + щадящая обфускация Jc=3) лечит"
-		echo "'подключено, но нет интернета' на сотовых сетях (Yota/МТС/Билайн/Мегафон/Tele2)."
-	fi
-	read -rp "$(t q_mobile)" mob
-	if [[ "${mob,,}" == "y" ]]; then PRESET="mobile"; else PRESET="default"; fi
+	# Single universal profile (MTU 1280 + Jc=3): works on both mobile and PC.
+	PRESET="mobile"
 
 	# Internal VPN subnets
 	SERVER_WG_IPV4="10.66.66.1"
@@ -330,7 +349,6 @@ installQuestions() {
 	echo "    Интерфейс: ${AWG_NIC} (${SERVER_WG_IPV4}/24)"
 	echo "    Выход    : ${SERVER_PUB_NIC}"
 	echo "    DNS      : ${CLIENT_DNS_1}, ${CLIENT_DNS_2}"
-	echo "    Пресет   : ${PRESET}$([[ "${PRESET}" == "mobile" ]] && echo ' (MTU 1280, Jc=3)')"
 	echo
 	read -rp "$(t confirm)" confirm
 	if [[ "${confirm,,}" == "n" ]]; then
@@ -600,7 +618,7 @@ newClient() {
 
 	echo
 	ok "Клиент '${name}' создан → ${client_file}"
-	echo -e "${CYAN}Отсканируй QR-код в приложении AmneziaWG / Amnezia VPN:${NC}"
+	echo -e "${CYAN}Отсканируй QR-код в приложении AmneziaWG:${NC}"
 	echo
 	qrencode -t ANSIUTF8 <"${client_file}" || warn "qrencode недоступен — импортируй файл вручную."
 	echo

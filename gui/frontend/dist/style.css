@@ -150,7 +150,24 @@ table.clients tbody tr:hover { background: var(--surface-2); }
   background: transparent; color: var(--muted); border: none; font-size: 1.5rem;
   line-height: 1; padding: 0 0.3rem;
 }
-.qr-note { margin: 0.6rem 0; font-size: 0.82rem; color: var(--warn); }
+.qr-note { margin: 0.6rem 0 0.2rem; font-size: 0.86rem; }
+.app-links { margin: 0 0 0.6rem; font-size: 0.84rem; color: var(--muted); }
+.app-links a { color: var(--accent); text-decoration: none; cursor: pointer; }
+.app-links a:hover { text-decoration: underline; }
+
+details.howto {
+  margin: 0 0 1rem; padding: 0.8rem 1rem; background: var(--surface-2);
+  border: 1px solid var(--line); border-radius: 10px;
+}
+details.howto summary { cursor: pointer; color: var(--accent); font-size: 0.88rem; font-weight: 600; }
+details.howto ol { margin: 0.8rem 0 0; padding-left: 1.2rem; color: var(--muted); font-size: 0.86rem; }
+details.howto li { margin-bottom: 0.5rem; }
+details.howto b { color: var(--text); }
+
+details.advanced { margin: -0.2rem 0 0; }
+details.advanced summary { cursor: pointer; color: var(--muted); font-size: 0.85rem; list-style: revert; }
+details.advanced summary:hover { color: var(--text); }
+details.advanced label { margin-top: 0.8rem; }
 .created-body { display: flex; gap: 1.4rem; margin: 1rem 0; flex-wrap: wrap; }
 .qr { background: #fff; padding: 8px; border-radius: 8px; flex: 0 0 auto; }
 .qr img { display: block; width: 240px; height: 240px; image-rendering: pixelated; }

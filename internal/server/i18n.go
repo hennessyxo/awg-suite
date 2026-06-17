@@ -48,7 +48,7 @@ var langs = map[string]map[string]string{
 		"cancel":       "Отмена",
 		"hint_limits":  "пусто = без лимита; срок — через сколько дней отключить",
 		"one_profile":  "Каждому устройству — свой клиент. Один конфиг на несколько устройств конфликтует.",
-		"qr_note":      "QR сканируется только приложением AmneziaWG. В AmneziaVPN/DefaultVPN — скачай и открой файл .conf.",
+		"qr_note":      "Открой приложение AmneziaWG и отсканируй QR (или импортируй файл .conf). iOS — App Store: apps.apple.com/app/amneziawg/id6478942365",
 	},
 	"en": {
 		"login_sub":    "Self-hosted VPN management",
@@ -88,7 +88,7 @@ var langs = map[string]map[string]string{
 		"cancel":       "Cancel",
 		"hint_limits":  "empty = no limit; expiry = disable after N days",
 		"one_profile":  "Each device needs its own client. Sharing one config across devices clashes.",
-		"qr_note":      "The QR scans only in the AmneziaWG app. In AmneziaVPN/DefaultVPN — download and open the .conf file.",
+		"qr_note":      "Open the AmneziaWG app and scan the QR (or import the .conf file). iOS — App Store: apps.apple.com/app/amneziawg/id6478942365",
 	},
 }
 

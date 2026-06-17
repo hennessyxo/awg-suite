@@ -60,8 +60,7 @@ type ConnectRequest struct {
 
 // InstallRequest carries the install options from the UI.
 type InstallRequest struct {
-	Preset string `json:"preset"` // "default" | "mobile"
-	Port   string `json:"port"`   // optional UDP port
+	Port   string `json:"port"`   // optional UDP port (blank = auto/free)
 	Client string `json:"client"` // first client name
 }
 
@@ -183,12 +182,9 @@ func (a *App) Install(req InstallRequest) (ClientResult, error) {
 	if client == "" {
 		client = "phone"
 	}
-	preset := req.Preset
-	if preset != "mobile" {
-		preset = "default"
-	}
 
-	env := map[string]string{"AWG_PRESET": preset, "AWG_CLIENT": client}
+	// Single universal profile (mobile: MTU 1280 + Jc=3) — works on phone and PC.
+	env := map[string]string{"AWG_PRESET": "mobile", "AWG_CLIENT": client}
 	if p := strings.TrimSpace(req.Port); p != "" {
 		env["AWG_PORT"] = p
 	}

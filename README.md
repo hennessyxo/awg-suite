@@ -2,8 +2,8 @@
 
 **English** · [Русский](README.ru.md)
 
-> One-command installer, client manager, monitor and web panel for a self-hosted
-> **AmneziaWG** VPN on Ubuntu/Debian.
+> Set up your own **AmneziaWG** VPN on a Linux server — with a desktop app, a
+> one-line command, or a script on the server. No Linux knowledge required.
 
 ![shell](https://img.shields.io/badge/shell-bash-1f425f)
 ![go](https://img.shields.io/badge/Go-1.25%2B-00ADD8?logo=go)
@@ -11,77 +11,72 @@
 ![ci](https://github.com/hennessyxo/amneziawg-installer/actions/workflows/ci.yml/badge.svg)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
-AmneziaWG is a fork of **WireGuard** with built-in traffic obfuscation. Plain
-WireGuard is fast but easy for DPI systems to fingerprint and block; AmneziaWG
-disguises the handshake and packet headers so the traffic looks like noise. This
-project removes all the manual work — install, NAT/firewall, randomized
-obfuscation, client management with QR codes — no Linux knowledge required.
+AmneziaWG is a fork of **WireGuard** with built-in traffic obfuscation: it
+disguises the handshake and packet headers so DPI systems can't fingerprint and
+block it. This project removes all the manual work — install, NAT/firewall,
+randomized obfuscation, client management with QR codes.
 
-## ✨ What's inside
+## What you need
 
-| Component | What it does |
-|-----------|--------------|
-| `amneziawg-install.sh` | One-command install + interactive menu (add/revoke clients, QR, status) |
-| **Mobile preset** | `MTU 1280` + `Jc=3` for 4G/LTE carriers — fixes "connected but no internet" on cellular |
-| `cmd/awg-monitor` | Live terminal dashboard (Go/Bubble Tea): traffic, rates, handshake, online status |
-| `cmd/awg-panel` | Web panel (Go + htmx): auth, HTTPS, live dashboard, client management, **quotas, expiry, speed limits** |
-| `cmd/awg-deploy` | Cross-platform SSH installer — a **Windows `.exe`** (+ macOS/Linux) that sets everything up remotely |
+1. **A cheap VPS** running **Ubuntu 22.04+/24.04 or Debian 12+** (any hosting
+   provider). You'll need its **IP address**, a **user** (usually `root`) and the
+   **password**.
+2. **The AmneziaWG app** on your phone/PC to connect:
+   - **iOS** — [App Store](https://apps.apple.com/app/amneziawg/id6478942365)
+   - **Android / Windows / macOS / Linux** — [amnezia.org/downloads](https://amnezia.org/downloads)
 
-## 📥 Installation
+That's it. The server profile is tuned (MTU 1280 + light obfuscation) to work on
+both **mobile (4G/LTE)** and **broadband/PC** out of the box — nothing to choose.
 
-You need a cheap VPS (Ubuntu 22.04+/24.04 or Debian 12+) — that's the server the
-VPN runs on. Pick **one** of the two ways to set it up.
+## Install — pick one way
 
-### Option A — from your own computer (easiest, no Linux needed)
+### 1. Desktop app (easiest, point & click) 🖱️
 
-1. Download the `awg-deploy` binary for **your computer** from
+A native app for **Windows** and **macOS** — no terminal at all.
+
+1. Download **AmneziaWG Manager** for your computer from
+   [Releases](https://github.com/hennessyxo/amneziawg-installer/releases/latest)
+   (`awg-gui` — `.app` for macOS, `.exe` for Windows).
+2. Open it, enter your server **IP + password**, click **Install**.
+3. Add clients, show their **QR / config**, install the web panel, or remove
+   everything — all with buttons. See [`gui/`](gui/).
+
+> Tick **"Remember password"** to skip typing it next time — it's stored in your
+> OS keychain (macOS Keychain / Windows Credential Manager), never in a file.
+
+### 2. From your computer (command line) ⌨️
+
+A single cross-platform binary `awg-deploy` that drives the server over SSH.
+
+1. Download it for **your computer** from
    [Releases](https://github.com/hennessyxo/amneziawg-installer/releases/latest):
 
-   | Your computer | File to download |
-   |---------------|------------------|
+   | Your computer | File |
+   |---------------|------|
    | Windows | `awg-deploy-windows-amd64.exe` |
    | macOS — Apple Silicon (M1–M5) | `awg-deploy-darwin-arm64.tar.gz` |
    | macOS — Intel | `awg-deploy-darwin-amd64.tar.gz` |
-   | Linux — x86_64 | `awg-deploy-linux-amd64.tar.gz` |
-   | Linux — ARM | `awg-deploy-linux-arm64.tar.gz` |
+   | Linux — x86_64 / ARM | `awg-deploy-linux-amd64.tar.gz` / `-arm64.tar.gz` |
 
-   (The `.tar.gz`/`.zip` archives keep the executable bit, so there's no `chmod`.
-   Raw binaries are attached too if you prefer.)
+2. **Run it with no arguments** — it asks for your server IP + password, connects
+   over SSH and runs the installer + management menu **on the server**:
 
-2. **Just run it with no arguments** — it asks for your server address and root
-   password, connects over SSH, and runs the installer & management menu **right
-   on the server**: install (if needed), then add / remove / rename clients,
-   monitoring, web panel, uninstall — every action happens server-side, you just
-   answer the prompts:
-
-   **Windows** — double-click the `.exe`, or in PowerShell:
-   ```powershell
-   .\awg-deploy-windows-amd64.exe
-   ```
-
-   **macOS / Linux** — double-click the `.tar.gz` to extract it (or
-   `tar -xzf awg-deploy-darwin-arm64.tar.gz`), then:
    ```bash
-   xattr -dr com.apple.quarantine ./awg-deploy   # macOS only: clear Gatekeeper
-   ./awg-deploy
+   ./awg-deploy            # macOS/Linux  (Windows: double-click or .\awg-deploy-windows-amd64.exe)
    ```
 
-   > macOS may say "cannot verify the developer" (the binary is unsigned). Either
-   > run the `xattr` command above, or right-click the file in Finder → **Open**.
-
-3. (Advanced) The same actions are also available as direct commands for scripts:
+3. (Advanced) direct commands for scripting:
    ```bash
-   awg-deploy install      root@YOUR_SERVER_IP --preset mobile
-   awg-deploy add-client   root@YOUR_SERVER_IP laptop
-   awg-deploy list         root@YOUR_SERVER_IP
-   awg-deploy remove-client root@YOUR_SERVER_IP laptop
-   awg-deploy monitor      root@YOUR_SERVER_IP
-   awg-deploy uninstall    root@YOUR_SERVER_IP
+   awg-deploy install       root@SERVER_IP
+   awg-deploy add-client    root@SERVER_IP laptop
+   awg-deploy list          root@SERVER_IP
+   awg-deploy remove-client root@SERVER_IP laptop
+   awg-deploy uninstall     root@SERVER_IP
    ```
 
-See [`docs/DEPLOY.md`](docs/DEPLOY.md) for all flags.
+See [`docs/DEPLOY.md`](docs/DEPLOY.md).
 
-### Option B — directly on the server
+### 3. Directly on the server 🐧
 
 SSH into the server and run, as root:
 
@@ -91,73 +86,54 @@ cd amneziawg-installer
 sudo bash amneziawg-install.sh        # add --lang en for English UI
 ```
 
-Answer a few questions (public IP, port, DNS, first client, mobile preset) and
-scan the QR in the **AmneziaVPN** app. Re-run the script anytime for the
-management menu: add/remove clients, **monitoring** (option 6) and the
-**web panel** (option 7).
+Answer a few questions (IP, port, DNS, first client) and scan the QR in the
+**AmneziaWG** app. Re-run the script anytime for the management menu: add/remove
+clients, **monitoring** (option 6), **web panel** (option 7).
 
-### Automation / non-interactive
-
+**Non-interactive** (automation):
 ```bash
-AWG_SERVER_IP=YOUR_SERVER_IP AWG_PORT=51820 AWG_PRESET=mobile AWG_CLIENT=phone \
-  sudo -E bash amneziawg-install.sh --yes
-sudo bash amneziawg-install.sh --add-client laptop    # one client, then exit
+AWG_SERVER_IP=SERVER_IP AWG_CLIENT=phone sudo -E bash amneziawg-install.sh --yes
+sudo bash amneziawg-install.sh --add-client laptop
 ```
+Vars: `AWG_SERVER_IP`, `AWG_PORT` (blank = free random), `AWG_DNS1/2`,
+`AWG_CLIENT`, `AWG_LANG` (`ru|en`).
 
-Vars: `AWG_SERVER_IP`, `AWG_SERVER_NIC`, `AWG_PORT`, `AWG_DNS1/2`, `AWG_CLIENT`,
-`AWG_PRESET` (`default|mobile`), `AWG_LANG` (`ru|en`).
+## Nuances & gotchas
 
-## 📊 Monitoring
+- **Unsigned apps.** The GUI and `awg-deploy` aren't code-signed, so the OS warns
+  the first time:
+  - **macOS** — right-click → **Open** (or `xattr -dr com.apple.quarantine <file>`).
+  - **Windows** — SmartScreen → **More info → Run anyway**.
+- **Cloud firewall.** If your provider has its own firewall (AWS/GCP/Oracle…),
+  open the VPN's **UDP port** there too. The installer opens the local firewall
+  itself and now picks a **free** port automatically (won't collide with other
+  services).
+- **One profile = one device.** Create a separate client for each phone/PC, or
+  their connections will clash.
+- **Web panel cert.** The panel uses a self-signed TLS cert, so the browser warns
+  once — that's expected; traffic is still encrypted. Don't expose it to the
+  public internet without need (use an SSH tunnel / trusted network).
+- **OpenVZ** VPSs are not supported (no kernel modules) — use KVM.
 
-`awg-monitor` ([`cmd/awg-monitor`](cmd/awg-monitor)) — a live terminal dashboard:
-per-client traffic and rates, handshake age, online status, throughput
-sparklines. Install it from the menu (option 6) or build it:
+## Monitoring & web panel
 
-```bash
-go build -o awg-monitor ./cmd/awg-monitor && sudo ./awg-monitor
-```
+- **`awg-monitor`** — live terminal dashboard (traffic, rates, handshake, online).
+  Menu option 6, or build: `go build -o awg-monitor ./cmd/awg-monitor`. See
+  [`docs/MONITOR.md`](docs/MONITOR.md).
+- **`awg-panel`** — browser dashboard (Go + htmx): auth (bcrypt + HTTPS), live
+  traffic, client management, and **traffic quotas, time-based expiry and
+  per-client speed limits** enforced by a background daemon. Menu option 7 (or the
+  GUI's "Install web panel" button). See [`docs/PANEL.md`](docs/PANEL.md).
 
-See [`docs/MONITOR.md`](docs/MONITOR.md).
-
-## 🖥️ Web panel
-
-`awg-panel` ([`cmd/awg-panel`](cmd/awg-panel)) — a browser dashboard (Go + htmx):
-password auth (bcrypt + sessions, HTTPS), live client traffic, add/remove
-clients with QR, plus **traffic quotas, time-based expiry and per-client speed
-limits**. Install from the menu (option 7); it sets a password, generates a TLS
-cert and a systemd service on `https://<ip>:8443`. EN/RU toggle in the UI.
-
-See [`docs/PANEL.md`](docs/PANEL.md).
-
-### Client lifecycle (quotas / expiry / speed)
-
-When adding a client you can set a **traffic quota (GB)**, an **expiry (days)**
-and a **speed limit (Mbit/s)**. A background enforcer accounts traffic and:
-
-- **expired** or **over quota** → the client is **disabled** (kept; re-enable any time);
-- **speed limit** → the client is throttled with `tc` (HTB on download, ingress
-  policer on upload) instead of being cut off.
-
-## 🗺️ Roadmap
-
-- [x] Installer + management menu + mobile presets
-- [x] TUI monitor (Go, tested, CI)
-- [x] Web panel (auth/HTTPS/htmx)
-- [x] Quotas + time-based expiry (auto-disable, re-enable)
-- [x] Per-client speed limiting (`tc`)
-- [x] Cross-platform SSH installer (Windows `.exe`)
-- [x] EN/RU localization (docs, installer UI, web panel)
-
-## 🔐 Security notes
+## Security notes
 
 - Private keys, params and the panel password hash are stored `600` under `umask 077`.
 - Each client gets a unique preshared key; obfuscation parameters are randomized per install.
-- The web panel uses bcrypt + sessions (HttpOnly cookie) + CSRF, and HTTPS; it runs
-  as root (needs `awg`) — don't expose it publicly without need (SSH tunnel / trusted network).
-- The SSH deploy tool verifies host keys via `known_hosts` (TOFU for new hosts,
-  hard-fail on a changed key).
+- The desktop app keeps the SSH password only in memory (or the OS keychain if you
+  opt in) — never in a project file.
+- SSH host keys are verified via `known_hosts` (trust-on-first-use, hard-fail on a changed key).
 
-## 🩺 Troubleshooting
+## Troubleshooting
 
 See [`docs/TROUBLESHOOTING.md`](docs/TROUBLESHOOTING.md). Quick checks:
 
@@ -167,12 +143,12 @@ journalctl -u awg-quick@awg0 -n 50
 awg show awg0
 ```
 
-## ⚠️ Disclaimer
+## Disclaimer
 
 For **lawful** use — privacy, accessing your own resources, and learning
 networking. Follow the laws of your jurisdiction.
 
-## 📄 License
+## License
 
 MIT © contributors. See [LICENSE](LICENSE). Install logic adapted from the
 battle-tested [`angristan/wireguard-install`](https://github.com/angristan/wireguard-install)

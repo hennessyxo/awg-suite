@@ -18,6 +18,15 @@
         <h2>Подключение к серверу</h2>
         <p class="sub">Введите данные вашего Linux-сервера. Приложение подключится по SSH и всё сделает само.</p>
 
+        <details class="howto">
+          <summary>Как это работает? (3 шага)</summary>
+          <ol>
+            <li><b>Сервер.</b> Нужен любой VPS на Ubuntu/Debian (например, у хостинг-провайдера) — его IP, логин (обычно <span class="mono">root</span>) и пароль.</li>
+            <li><b>Установка.</b> Подключитесь здесь — приложение само поставит AmneziaWG и создаст первого клиента.</li>
+            <li><b>Подключение.</b> Установите приложение AmneziaWG на телефон/ПК и отсканируйте QR (или импортируйте файл .conf).</li>
+          </ol>
+        </details>
+
         <div class="form">
           <label>IP-адрес сервера
             <input id="host" type="text" placeholder="123.45.67.89" autocomplete="off" />
@@ -53,20 +62,17 @@
         <!-- 2a. Not installed → install -->
         <div id="block-install" class="panel hidden">
           <h2>AmneziaWG ещё не установлен</h2>
-          <p class="sub">Настройте параметры и нажмите «Установить». Это займёт пару минут.</p>
+          <p class="sub">Нажмите «Установить» — всё настроится автоматически (порт подберётся свободный, профиль работает и на телефоне, и на ПК). Займёт пару минут.</p>
           <div class="form">
-            <label>Режим
-              <select id="preset">
-                <option value="default">Обычный</option>
-                <option value="mobile">Мобильный (для 4G/LTE)</option>
-              </select>
-            </label>
-            <label>UDP-порт (необязательно)
-              <input id="port" type="text" placeholder="случайный" autocomplete="off" />
-            </label>
             <label>Имя первого клиента
               <input id="first-client" type="text" value="phone" autocomplete="off" />
             </label>
+            <details class="advanced">
+              <summary>Дополнительно</summary>
+              <label>UDP-порт (необязательно — оставьте пустым для автоподбора)
+                <input id="port" type="text" placeholder="авто" autocomplete="off" />
+              </label>
+            </details>
             <button id="btn-install" class="primary">Установить</button>
           </div>
         </div>
@@ -126,7 +132,8 @@
             <h2>Клиент <span id="result-name"></span> готов</h2>
             <button class="x" id="result-close">×</button>
           </div>
-          <p class="qr-note">QR-код понимает ТОЛЬКО приложение AmneziaWG. Для AmneziaVPN / других — импортируйте файл .conf.</p>
+          <p class="qr-note">Откройте приложение <b>AmneziaWG</b> и отсканируйте QR — или импортируйте файл .conf.</p>
+          <p class="app-links">Скачать AmneziaWG: <a href="#" id="link-ios">iOS (App Store)</a> · <a href="#" id="link-other">Android / Windows</a></p>
           <div class="created-body">
             <div class="qr"><img id="result-qr" alt="QR" /></div>
             <pre id="result-conf" class="conf mono"></pre>

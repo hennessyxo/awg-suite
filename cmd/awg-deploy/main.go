@@ -150,7 +150,7 @@ func runInstall(args []string) error {
 	fs := flag.NewFlagSet("install", flag.ExitOnError)
 	af := registerAuthFlags(fs)
 	port := fs.String("port", "", "AmneziaWG UDP port (default: random on server)")
-	preset := fs.String("preset", "default", "obfuscation preset: default | mobile")
+	preset := fs.String("preset", "mobile", "obfuscation preset (mobile works on phone and PC)")
 	client := fs.String("client", "phone", "first client name")
 	serverIP := fs.String("server-ip", "", "public IP/host clients connect to (default: autodetect)")
 	dns1 := fs.String("dns1", "", "client DNS 1 (default 1.1.1.1)")
@@ -469,11 +469,14 @@ func saveAndShow(installerOutput, outPath string) error {
 	if pngPath != "" {
 		fmt.Printf("✓ QR-картинка:     %s\n", pngPath)
 	}
-	fmt.Println("\nКак подключиться:")
-	fmt.Printf("  • импортируй файл %s в AmneziaWG / AmneziaVPN / DefaultVPN (работает везде), или\n", outPath)
+	fmt.Println("\nКак подключиться (приложение AmneziaWG):")
+	fmt.Println("  • iOS — App Store: https://apps.apple.com/app/amneziawg/id6478942365")
+	fmt.Println("  • Android / Windows: https://amnezia.org/downloads")
 	if pngPath != "" {
-		fmt.Printf("  • отсканируй картинку %s — но QR понимает ТОЛЬКО приложение AmneziaWG.\n", pngPath)
+		fmt.Printf("  • затем отсканируй QR %s или импортируй файл %s\n", pngPath, outPath)
 		openFile(pngPath)
+	} else {
+		fmt.Printf("  • затем импортируй файл %s\n", outPath)
 	}
 	return nil
 }

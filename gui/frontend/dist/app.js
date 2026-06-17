@@ -4,6 +4,14 @@
 const $ = (id) => document.getElementById(id);
 const backend = () => window.go.main.App;
 
+const IOS_APP_URL = "https://apps.apple.com/app/amneziawg/id6478942365";
+const OTHER_APP_URL = "https://amnezia.org/downloads";
+
+// openExternal opens a URL in the user's real browser, not the app webview.
+function openExternal(url) {
+  if (window.runtime && window.runtime.BrowserOpenURL) window.runtime.BrowserOpenURL(url);
+}
+
 let authMode = "password";
 let lastResult = null;
 
@@ -146,7 +154,6 @@ async function refreshStatus() {
 
 async function install() {
   const req = {
-    preset: $("preset").value,
     port: $("port").value.trim(),
     client: $("first-client").value.trim() || "phone",
   };
@@ -366,6 +373,8 @@ window.addEventListener("DOMContentLoaded", () => {
   $("btn-remove-panel").addEventListener("click", removePanel);
   $("result-close").addEventListener("click", () => hide($("result")));
   $("result-download").addEventListener("click", downloadConf);
+  $("link-ios").addEventListener("click", (e) => { e.preventDefault(); openExternal(IOS_APP_URL); });
+  $("link-other").addEventListener("click", (e) => { e.preventDefault(); openExternal(OTHER_APP_URL); });
 
   if (window.runtime) {
     window.runtime.EventsOn("install:log", appendLog);
