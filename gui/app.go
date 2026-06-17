@@ -7,6 +7,7 @@ import (
 	"sort"
 	"strings"
 	"sync"
+	"time"
 	"unicode"
 
 	amneziawg "github.com/hennessyxo/amneziawg-installer"
@@ -28,9 +29,10 @@ const clientConfDir = "/etc/amnezia/amneziawg/clients"
 type App struct {
 	ctx context.Context
 
-	mu     sync.Mutex
-	client *deploy.Client
-	target deploy.Target
+	mu       sync.Mutex
+	client   *deploy.Client
+	target   deploy.Target
+	keepStop chan struct{} // closes to stop the keepalive loop
 }
 
 // NewApp constructs the backend in its disconnected state.
@@ -42,9 +44,34 @@ func (a *App) shutdown(_ context.Context)  { a.closeClient() }
 func (a *App) closeClient() {
 	a.mu.Lock()
 	defer a.mu.Unlock()
+	if a.keepStop != nil {
+		close(a.keepStop)
+		a.keepStop = nil
+	}
 	if a.client != nil {
 		_ = a.client.Close()
 		a.client = nil
+	}
+}
+
+// keepAliveLoop pings the server periodically so an idle SSH session isn't
+// dropped by the server or a NAT timeout. It exits when stop is closed.
+func (a *App) keepAliveLoop(stop chan struct{}) {
+	t := time.NewTicker(30 * time.Second)
+	defer t.Stop()
+	for {
+		select {
+		case <-stop:
+			return
+		case <-t.C:
+			a.mu.Lock()
+			cl := a.client
+			a.mu.Unlock()
+			if cl == nil {
+				return
+			}
+			_ = cl.KeepAlive()
+		}
 	}
 }
 
@@ -111,7 +138,10 @@ func (a *App) Connect(req ConnectRequest) error {
 	a.mu.Lock()
 	a.client = cl
 	a.target = t
+	stop := make(chan struct{})
+	a.keepStop = stop
 	a.mu.Unlock()
+	go a.keepAliveLoop(stop)
 
 	a.persistPrefs(req, host, user)
 	return nil

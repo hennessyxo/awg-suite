@@ -1,0 +1,5 @@
+# The installer script is embedded into the Go binaries and piped to bash on a
+# Linux server — it MUST keep LF line endings even when checked out on Windows
+# (CRLF breaks `bash -s` with `$'\r': command not found`).
+*.sh text eol=lf
+amneziawg-install.sh text eol=lf

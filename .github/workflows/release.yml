@@ -132,8 +132,52 @@ jobs:
         run: |
           cd build/bin
           if [ "${{ matrix.os }}" = "macos-latest" ]; then
-            # .app is a bundle (a directory) — zip it so the release asset is one file.
-            zip -ry "${{ matrix.out }}.zip" awg-gui.app
+            # macOS shows a one-time Gatekeeper warning on first launch. Ship a
+            # short bilingual guide with both the Settings and Terminal ways to allow it.
+            cat > "Открыть на macOS — How to open (macOS).txt" <<'TXT'
+          Как открыть AmneziaWG Manager (macOS)
+          =====================================
+          При первом запуске macOS показывает предупреждение — это нормально.
+          Разрешить нужно один раз, любым способом:
+
+          Способ 1 — через настройки:
+            1. Дважды кликните awg-gui.app и закройте предупреждение.
+            2. Системные настройки -> «Конфиденциальность и безопасность».
+            3. Внизу найдите строку про «awg-gui» и нажмите «Открыть всё равно»,
+               затем подтвердите «Открыть».
+
+          Способ 2 — через Терминал (если так привычнее):
+            1. Откройте приложение «Терминал».
+            2. Наберите это (без кавычек) и поставьте ПРОБЕЛ в конце, но Enter пока НЕ нажимайте:
+                 xattr -dr com.apple.quarantine
+            3. Перетащите awg-gui.app в окно Терминала — путь подставится сам.
+            4. Нажмите Enter. Готово.
+
+          Дальше приложение открывается обычным двойным кликом.
+
+
+          How to open AmneziaWG Manager (macOS)
+          =====================================
+          On first launch macOS shows a warning — this is expected.
+          You only need to allow it once, either way:
+
+          Option 1 — via Settings:
+            1. Double-click awg-gui.app and dismiss the warning.
+            2. System Settings -> "Privacy & Security".
+            3. Near the bottom find the "awg-gui" line, click "Open Anyway",
+               then confirm "Open".
+
+          Option 2 — via Terminal (if you prefer commands):
+            1. Open the "Terminal" app.
+            2. Type this (without quotes) and add a trailing SPACE, but do NOT press Enter yet:
+                 xattr -dr com.apple.quarantine
+            3. Drag awg-gui.app into the Terminal window — the path is filled in.
+            4. Press Enter. Done.
+
+          After that the app opens with a normal double-click.
+          TXT
+            guide="Открыть на macOS — How to open (macOS).txt"
+            zip -ry "${{ matrix.out }}.zip" awg-gui.app "$guide"
             gh release upload "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --clobber "${{ matrix.out }}.zip"
           else
             # Windows: a single double-clickable .exe.

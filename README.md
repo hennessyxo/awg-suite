@@ -102,7 +102,9 @@ Vars: `AWG_SERVER_IP`, `AWG_PORT` (blank = free random), `AWG_DNS1/2`,
 
 - **Unsigned apps.** The GUI and `awg-deploy` aren't code-signed, so the OS warns
   the first time:
-  - **macOS** — right-click → **Open** (or `xattr -dr com.apple.quarantine <file>`).
+  - **macOS** — the first launch is blocked. Double-click, dismiss the warning,
+    then **System Settings → Privacy & Security → Open Anyway** (once). On older
+    macOS: right-click → **Open**. The GUI zip includes a short text guide.
   - **Windows** — SmartScreen → **More info → Run anyway**.
 - **Cloud firewall.** If your provider has its own firewall (AWS/GCP/Oracle…),
   open the VPN's **UDP port** there too. The installer opens the local firewall

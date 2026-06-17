@@ -35,6 +35,13 @@ func Dial(t Target, auth []ssh.AuthMethod, hostKey ssh.HostKeyCallback, timeout 
 // Close terminates the connection.
 func (c *Client) Close() error { return c.c.Close() }
 
+// KeepAlive sends an SSH keepalive request so an idle connection isn't dropped
+// by the server or a NAT/firewall timeout.
+func (c *Client) KeepAlive() error {
+	_, _, err := c.c.SendRequest("keepalive@openssh.com", true, nil)
+	return err
+}
+
 // Run executes a command and returns its combined output.
 func (c *Client) Run(cmd string) (string, error) {
 	sess, err := c.c.NewSession()
