@@ -127,6 +127,30 @@ func IsInstalled(output string) bool {
 	return strings.Contains(output, "AWG_INSTALLED")
 }
 
+// PanelPort is the TCP port the web panel listens on.
+const PanelPort = 8443
+
+// InstallPanelCommand builds the remote command to install the web panel
+// non-interactively, passing the admin password via env.
+func InstallPanelCommand(sudo, password string) string {
+	return sudo + "env AWG_PANEL_PASSWORD=" + shellQuote(password) + " bash -s -- --install-panel"
+}
+
+// RemovePanelCommand builds the remote command to remove the web panel.
+func RemovePanelCommand(sudo string) string {
+	return sudo + "bash -s -- --remove-panel"
+}
+
+// PanelInstalledCommand prints AWG_PANEL_INSTALLED if the panel service exists.
+func PanelInstalledCommand(sudo string) string {
+	return sudo + "test -f /etc/systemd/system/awg-panel.service && echo AWG_PANEL_INSTALLED || true"
+}
+
+// IsPanelInstalled interprets the output of PanelInstalledCommand.
+func IsPanelInstalled(output string) bool {
+	return strings.Contains(output, "AWG_PANEL_INSTALLED")
+}
+
 // MonitorDumpCommand returns the command that dumps live interface state.
 func MonitorDumpCommand(sudo, iface string) string {
 	return sudo + "awg show " + shellQuote(iface) + " dump"

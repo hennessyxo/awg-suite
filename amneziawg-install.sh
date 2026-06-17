@@ -53,6 +53,8 @@ ADD_CLIENT=""
 REMOVE_CLIENT=""
 LIST_CLIENTS=0
 UNINSTALL=0
+INSTALL_PANEL=0
+REMOVE_PANEL=0
 LANG_CODE="ru"
 
 # detectLang picks the UI language: --lang/AWG_LANG, else $LANG, else Russian.
@@ -836,6 +838,10 @@ installPanel() {
 	# Already installed → show how to reach it and offer removal.
 	if [[ -f /etc/systemd/system/awg-panel.service ]]; then
 		showPanelUsage
+		# Non-interactive (GUI/automation): just report it's already up.
+		if [[ "${INSTALL_PANEL}" == "1" || -n "${AWG_PANEL_PASSWORD:-}" ]]; then
+			return 0
+		fi
 		read -rp "$(t panel_inst_q)" r
 		[[ "${r,,}" == "y" ]] && removePanel
 		return 0
@@ -850,17 +856,26 @@ installPanel() {
 	# Admin password → bcrypt hash (plaintext never stored).
 	if [[ ! -s "${PANEL_HASH}" ]]; then
 		local pw pw2
-		while :; do
-			read -rsp "Придумай пароль администратора панели (мин. 8 символов): " pw; echo
-			read -rsp "Повтори пароль: " pw2; echo
-			if [[ "${pw}" != "${pw2}" ]]; then
-				warn "Пароли не совпадают — попробуй снова."
-			elif [[ "${#pw}" -lt 8 ]]; then
-				warn "Слишком короткий пароль (минимум 8 символов)."
-			else
-				break
+		# Non-interactive path (GUI/automation): password from env.
+		if [[ -n "${AWG_PANEL_PASSWORD:-}" ]]; then
+			if [[ "${#AWG_PANEL_PASSWORD}" -lt 8 ]]; then
+				err "Пароль панели слишком короткий (минимум 8 символов)."
+				return 1
 			fi
-		done
+			pw="${AWG_PANEL_PASSWORD}"
+		else
+			while :; do
+				read -rsp "Придумай пароль администратора панели (мин. 8 символов): " pw; echo
+				read -rsp "Повтори пароль: " pw2; echo
+				if [[ "${pw}" != "${pw2}" ]]; then
+					warn "Пароли не совпадают — попробуй снова."
+				elif [[ "${#pw}" -lt 8 ]]; then
+					warn "Слишком короткий пароль (минимум 8 символов)."
+				else
+					break
+				fi
+			done
+		fi
 		umask 077
 		echo "${pw}" | "${PANEL_BIN}" hash >"${PANEL_HASH}"
 		chmod 600 "${PANEL_HASH}"
@@ -970,6 +985,8 @@ parseArgs() {
 			--remove-client) REMOVE_CLIENT="${2:-}"; shift 2 ;;
 			--list) LIST_CLIENTS=1; shift ;;
 			--uninstall) UNINSTALL=1; shift ;;
+			--install-panel) INSTALL_PANEL=1; shift ;;
+			--remove-panel) REMOVE_PANEL=1; shift ;;
 			--lang) AWG_LANG="${2:-}"; shift 2 ;;
 			-h | --help)
 				echo "Usage: $0 [-y|--yes] [--lang en|ru] [--add-client NAME] [--remove-client NAME] [--list]"
@@ -979,6 +996,8 @@ parseArgs() {
 				echo "  --remove-client N  remove client N and exit"
 				echo "  --list             list clients and exit"
 				echo "  --uninstall        remove everything (needs AWG_CONFIRM=yes)"
+				echo "  --install-panel    install the web panel (password via AWG_PANEL_PASSWORD)"
+				echo "  --remove-panel     remove the web panel"
 				exit 0
 				;;
 			*) shift ;;
@@ -1013,6 +1032,14 @@ main() {
 	if [[ -n "${ADD_CLIENT}" ]]; then
 		newClient "${ADD_CLIENT}"
 		exit 0
+	fi
+	if [[ "${INSTALL_PANEL}" == "1" ]]; then
+		installPanel
+		exit $?
+	fi
+	if [[ "${REMOVE_PANEL}" == "1" ]]; then
+		removePanel
+		exit $?
 	fi
 
 	# Interactive sessions: let the user pick the language (unless forced via

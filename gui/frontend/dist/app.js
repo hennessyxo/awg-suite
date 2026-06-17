@@ -112,6 +112,7 @@ async function refreshStatus() {
       hide($("block-install"));
       show($("block-manage"));
       await refreshClients();
+      await refreshPanel();
     } else {
       show($("block-install"));
       hide($("block-manage"));
@@ -232,6 +233,64 @@ async function uninstall() {
   }
 }
 
+// --- web panel (advanced limits) -------------------------------------------
+
+async function refreshPanel() {
+  try {
+    const p = await backend().PanelStatus();
+    $("panel-url").textContent = p.url;
+    $("panel-absent").classList.toggle("hidden", p.installed);
+    $("panel-present").classList.toggle("hidden", !p.installed);
+  } catch (err) {
+    toast("Не удалось проверить панель: " + errMsg(err), "err");
+  }
+}
+
+async function installPanel() {
+  const pass = $("panel-pass").value;
+  if (pass.length < 8) {
+    toast("Пароль панели — минимум 8 символов", "err");
+    return;
+  }
+  $("log").textContent = "";
+  $("log-title").textContent = "Установка веб-панели";
+  show($("log-panel"));
+  busy(true, "Устанавливаю веб-панель…");
+  try {
+    await backend().InstallPanel(pass);
+    $("panel-pass").value = "";
+    await refreshPanel();
+    toast("Веб-панель установлена", "ok");
+  } catch (err) {
+    toast("Не удалось установить панель: " + errMsg(err), "err");
+  } finally {
+    busy(false);
+  }
+}
+
+async function removePanel() {
+  const ok = await confirmDialog("Удалить веб-панель с сервера? AmneziaWG и клиенты останутся.", "Удалить панель");
+  if (!ok) return;
+  busy(true, "Удаляю панель…");
+  try {
+    await backend().RemovePanel();
+    await refreshPanel();
+    toast("Веб-панель удалена", "ok");
+  } catch (err) {
+    toast("Не удалось удалить панель: " + errMsg(err), "err");
+  } finally {
+    busy(false);
+  }
+}
+
+async function openPanel() {
+  try {
+    await backend().OpenPanel();
+  } catch (err) {
+    toast("Не удалось открыть браузер: " + errMsg(err), "err");
+  }
+}
+
 // --- client result (QR + conf) ---------------------------------------------
 
 function showResult(res) {
@@ -262,11 +321,15 @@ window.addEventListener("DOMContentLoaded", () => {
   $("btn-install").addEventListener("click", install);
   $("add-form").addEventListener("submit", addClient);
   $("btn-uninstall").addEventListener("click", uninstall);
+  $("btn-install-panel").addEventListener("click", installPanel);
+  $("btn-open-panel").addEventListener("click", openPanel);
+  $("btn-remove-panel").addEventListener("click", removePanel);
   $("result-close").addEventListener("click", () => hide($("result")));
   $("result-download").addEventListener("click", downloadConf);
 
   if (window.runtime) {
     window.runtime.EventsOn("install:log", appendLog);
     window.runtime.EventsOn("client:log", appendLog);
+    window.runtime.EventsOn("panel:log", appendLog);
   }
 });

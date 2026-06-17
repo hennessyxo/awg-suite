@@ -82,6 +82,28 @@
               <tbody id="clients-body"></tbody>
             </table>
           </div>
+          <!-- web panel: advanced per-client limits (speed/days/quota) -->
+          <div id="panel-box" class="subpanel">
+            <h3>Лимиты и расширенное управление</h3>
+            <p class="dim">Скорость, срок действия и квота трафика на клиента живут в веб-панели — у неё есть фоновый сервис, который реально применяет лимиты и отключает клиентов.</p>
+
+            <div id="panel-absent" class="hidden">
+              <div class="panel-install">
+                <input id="panel-pass" type="password" placeholder="пароль администратора (мин. 8 символов)" autocomplete="off" />
+                <button id="btn-install-panel" class="primary">Установить веб-панель</button>
+              </div>
+            </div>
+
+            <div id="panel-present" class="hidden">
+              <p class="panel-up">✓ Веб-панель работает: <span id="panel-url" class="mono"></span></p>
+              <div class="row-actions" style="justify-content:flex-start">
+                <button id="btn-open-panel" class="primary">Открыть в браузере</button>
+                <button id="btn-remove-panel" class="link del">удалить панель</button>
+              </div>
+              <p class="dim" style="margin-top:.6rem">Браузер один раз предупредит про самоподписанный сертификат — это нормально, трафик шифруется.</p>
+            </div>
+          </div>
+
           <div class="manage-footer">
             <button id="btn-uninstall" class="danger">Удалить AmneziaWG полностью</button>
           </div>

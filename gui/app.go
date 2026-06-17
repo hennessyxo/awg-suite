@@ -65,6 +65,12 @@ type StatusResult struct {
 	Installed bool `json:"installed"`
 }
 
+// PanelResult reports the web panel state and the URL to reach it.
+type PanelResult struct {
+	Installed bool   `json:"installed"`
+	URL       string `json:"url"`
+}
+
 // ClientResult is a freshly created client's config plus a scannable QR image
 // rendered as a data URI for direct use in an <img src>.
 type ClientResult struct {
@@ -204,6 +210,65 @@ func (a *App) ListClients() ([]string, error) {
 	}
 	sort.Strings(names)
 	return names, nil
+}
+
+// panelURL builds the https URL the web panel is reachable at (the host the
+// user connected to, on the panel port).
+func (a *App) panelURL() string {
+	return fmt.Sprintf("https://%s:%d", a.target.Host, deploy.PanelPort)
+}
+
+// PanelStatus reports whether the web panel is installed and its URL.
+func (a *App) PanelStatus() (PanelResult, error) {
+	cl, t, err := a.conn()
+	if err != nil {
+		return PanelResult{}, err
+	}
+	out, err := cl.Run(deploy.PanelInstalledCommand(deploy.Sudo(t.User)))
+	if err != nil {
+		return PanelResult{}, fmt.Errorf("проверка панели не удалась: %w", err)
+	}
+	return PanelResult{Installed: deploy.IsPanelInstalled(out), URL: a.panelURL()}, nil
+}
+
+// InstallPanel installs the web panel non-interactively with the given admin
+// password (min 8 chars) and returns its URL. The panel carries the advanced
+// per-client limits (speed/quota/expiry) and the enforcer daemon.
+func (a *App) InstallPanel(password string) (PanelResult, error) {
+	cl, t, err := a.conn()
+	if err != nil {
+		return PanelResult{}, err
+	}
+	if len(password) < 8 {
+		return PanelResult{}, fmt.Errorf("пароль панели — минимум 8 символов")
+	}
+	out, err := cl.RunScript(deploy.InstallPanelCommand(deploy.Sudo(t.User), password), amneziawg.InstallerScript, a.logWriter("panel:log"))
+	if err != nil {
+		return PanelResult{}, fmt.Errorf("установка панели не удалась: %w\n%s", err, out)
+	}
+	return PanelResult{Installed: true, URL: a.panelURL()}, nil
+}
+
+// RemovePanel removes the web panel from the server.
+func (a *App) RemovePanel() error {
+	cl, t, err := a.conn()
+	if err != nil {
+		return err
+	}
+	out, err := cl.RunScript(deploy.RemovePanelCommand(deploy.Sudo(t.User)), amneziawg.InstallerScript, a.logWriter("panel:log"))
+	if err != nil {
+		return fmt.Errorf("удаление панели не удалось: %w\n%s", err, out)
+	}
+	return nil
+}
+
+// OpenPanel opens the web panel URL in the user's default browser.
+func (a *App) OpenPanel() error {
+	if a.ctx == nil {
+		return fmt.Errorf("приложение не готово")
+	}
+	wruntime.BrowserOpenURL(a.ctx, a.panelURL())
+	return nil
 }
 
 // Uninstall removes AmneziaWG and everything it set up from the server.

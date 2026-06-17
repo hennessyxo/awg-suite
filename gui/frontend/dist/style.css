@@ -120,6 +120,17 @@ table.clients tbody tr:hover { background: var(--surface-2); }
 .empty { color: var(--muted); padding: 1rem 0.6rem; }
 .manage-footer { margin-top: 1.4rem; padding-top: 1rem; border-top: 1px solid var(--line); }
 
+/* ---- web panel subpanel ---- */
+.subpanel {
+  margin-top: 1.4rem; padding: 1.1rem 1.2rem;
+  background: var(--surface-2); border: 1px solid var(--line); border-radius: var(--radius);
+}
+.subpanel h3 { margin: 0 0 0.4rem; font-size: 1rem; }
+.subpanel p { margin: 0.4rem 0; font-size: 0.86rem; }
+.panel-install { display: flex; gap: 0.5rem; margin-top: 0.8rem; flex-wrap: wrap; }
+.panel-install input { flex: 1; min-width: 220px; }
+.panel-up { color: var(--accent); }
+
 /* ---- log ---- */
 .log pre {
   margin: 1rem 0 0; padding: 0.9rem 1rem; max-height: 280px; overflow: auto;
