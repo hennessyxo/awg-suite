@@ -25,7 +25,6 @@
     <tr>
       <th></th>
       <th><a class="sort{{if eq .Sort "name"}} on{{end}}" hx-get="/partials/clients?sort=name" hx-target="#clients" hx-swap="innerHTML">{{.L.h_client}}</a></th>
-      <th>Endpoint</th>
       <th class="r">{{.L.h_speed_dn}}</th><th class="r">{{.L.h_speed_up}}</th>
       <th class="r">{{.L.h_limit}}</th><th class="r">{{.L.h_quota}}</th>
       <th class="r"><a class="sort{{if eq .Sort "today"}} on{{end}}" hx-get="/partials/clients?sort=today" hx-target="#clients" hx-swap="innerHTML">{{.L.h_today}}</a></th>
@@ -40,7 +39,6 @@
     <tr class="{{if .Online}}online{{end}}{{if .Disabled}} disabled{{end}}">
       <td><span class="dot {{if .Disabled}}off{{else if .Online}}on{{else}}off{{end}}"></span></td>
       <td class="name">{{.Name}}{{if .Disabled}} <span class="badge">{{$.L.disabled}}</span>{{end}}</td>
-      <td class="mono dim">{{.Endpoint}}</td>
       <td class="mono r">{{.RateRx}}</td>
       <td class="mono r">{{.RateTx}}</td>
       <td class="mono r dim">{{if .Speed}}{{.Speed}}{{else}}∞{{end}}</td>
@@ -70,7 +68,7 @@
       </td>
     </tr>
   {{else}}
-    <tr><td colspan="13" class="muted">{{.L.no_clients}}</td></tr>
+    <tr><td colspan="12" class="muted">{{.L.no_clients}}</td></tr>
   {{end}}
   </tbody>
 </table>

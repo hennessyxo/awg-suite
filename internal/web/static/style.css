@@ -94,13 +94,14 @@ main { max-width: 1120px; margin: 1.8rem auto 3rem; padding: 0 1.5rem; }
 .hint-profile { margin: 0 0 1.2rem; font-size: 0.82rem; color: var(--muted); }
 
 /* add-client toolbar */
-.add { display: flex; gap: 0.5rem; margin: 0; flex-wrap: wrap; }
+.add { display: flex; gap: 0.5rem; margin: 0; flex-wrap: wrap; align-items: center; }
 .add input {
-  padding: 0.55rem 0.75rem; background: var(--surface); border: 1px solid var(--line);
-  border-radius: var(--r-sm); color: var(--text); font-family: var(--mono); font-size: 13px;
+  padding: 0.55rem 0.8rem; background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--r-sm); color: var(--text); font-family: var(--sans); font-size: 13px;
 }
 .add input:focus { outline: none; border-color: var(--accent-2); box-shadow: var(--glow); }
-.add input[type="number"] { width: 110px; }
+.add input[type="text"] { min-width: 170px; }
+.add input[type="number"] { width: 140px; }
 
 /* ---- stat cards ---- */
 .stat-row { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.9rem; margin-bottom: 1.1rem; }
