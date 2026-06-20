@@ -136,3 +136,37 @@ func TestExtractConfig(t *testing.T) {
 		t.Error("expected error when markers absent")
 	}
 }
+
+func TestParseServerInfo(t *testing.T) {
+	out := "PORT=51820\nVER=amneziawg-tools v1.0\nUP=93784\nPEERS=3\n"
+	info := ParseServerInfo(out)
+	if info.Port != "51820" {
+		t.Errorf("Port = %q, want 51820", info.Port)
+	}
+	if info.Version != "amneziawg-tools v1.0" {
+		t.Errorf("Version = %q", info.Version)
+	}
+	if info.UptimeSeconds != 93784 {
+		t.Errorf("UptimeSeconds = %d, want 93784", info.UptimeSeconds)
+	}
+	if info.Peers != 3 {
+		t.Errorf("Peers = %d, want 3", info.Peers)
+	}
+}
+
+func TestParseServerInfo_Empty(t *testing.T) {
+	info := ParseServerInfo("PORT=\nVER=\nUP=\nPEERS=\n")
+	if info.Port != "" || info.Version != "" || info.UptimeSeconds != 0 || info.Peers != 0 {
+		t.Errorf("expected zero values, got %+v", info)
+	}
+}
+
+func TestChangePanelPasswordCommand_NoPasswordInArgs(t *testing.T) {
+	cmd := ChangePanelPasswordCommand("sudo ")
+	if !strings.Contains(cmd, "awg-panel hash") || !strings.Contains(cmd, "read -r __pw") {
+		t.Errorf("command missing stdin-hash pipeline: %s", cmd)
+	}
+	if !strings.HasPrefix(cmd, "sudo bash -c ") {
+		t.Errorf("unexpected prefix: %s", cmd)
+	}
+}

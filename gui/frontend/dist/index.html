@@ -111,6 +111,7 @@
             <button class="nav-item on" data-tab="clients"><span class="ni">👤</span><span data-i18n="tab_clients">Клиенты</span></button>
             <button class="nav-item" data-tab="monitor"><span class="ni">📊</span><span data-i18n="tab_monitor">Мониторинг</span></button>
             <button class="nav-item" data-tab="advanced"><span class="ni">🌐</span><span data-i18n="tab_panel">Веб-панель</span></button>
+            <button class="nav-item" data-tab="settings"><span class="ni">⚙️</span><span data-i18n="tab_settings">Настройки</span></button>
           </nav>
         </aside>
 
@@ -132,9 +133,6 @@
                   <tbody id="clients-body"></tbody>
                 </table>
               </div>
-            </div>
-            <div class="manage-footer">
-              <button id="btn-uninstall" class="danger" data-i18n="btn_uninstall">Удалить AmneziaWG полностью</button>
             </div>
           </section>
 
@@ -188,9 +186,65 @@
                 <p class="panel-up"><span data-i18n="panel_up">✓ Веб-панель работает:</span> <span id="panel-url" class="mono"></span></p>
                 <div class="row-actions" style="justify-content:flex-start">
                   <button id="btn-open-panel" class="primary" data-i18n="btn_open_panel">Открыть в браузере</button>
-                  <button id="btn-remove-panel" class="link del" data-i18n="btn_remove_panel">удалить панель</button>
                 </div>
                 <p class="dim" style="margin-top:.6rem" data-i18n="panel_cert_note">Браузер один раз предупредит про самоподписанный сертификат — это нормально, трафик шифруется.</p>
+              </div>
+            </div>
+          </section>
+
+          <!-- TAB: settings -->
+          <section id="tab-settings" class="tab-pane hidden">
+            <div class="section-head"><h1 data-i18n="tab_settings">Настройки</h1></div>
+
+            <div class="card">
+              <h2 class="card-title" data-i18n="settings_server">Сервер</h2>
+              <div class="info-grid">
+                <div class="info"><span class="info-k" data-i18n="info_host">Адрес</span><span class="info-v mono" id="info-host">—</span></div>
+                <div class="info"><span class="info-k" data-i18n="info_port">UDP-порт</span><span class="info-v mono" id="info-port">—</span></div>
+                <div class="info"><span class="info-k">AmneziaWG</span><span class="info-v mono" id="info-version">—</span></div>
+                <div class="info"><span class="info-k" data-i18n="info_uptime">Аптайм</span><span class="info-v" id="info-uptime">—</span></div>
+                <div class="info"><span class="info-k" data-i18n="info_clients">Клиентов</span><span class="info-v" id="info-clients">—</span></div>
+                <div class="info"><span class="info-k" data-i18n="info_panel">Панель</span><span class="info-v mono" id="info-panel">—</span></div>
+              </div>
+            </div>
+
+            <div class="card">
+              <h2 class="card-title" data-i18n="settings_rename">Название сервера</h2>
+              <p class="dim" data-i18n="settings_rename_hint">Понятное имя для этого подключения в приложении. На сам сервер не влияет.</p>
+              <div class="inline-form">
+                <input id="rename-input" type="text" data-i18n-ph="ph_server_name" placeholder="например, VDSina DE" autocomplete="off" />
+                <button id="btn-rename-server" class="primary" data-i18n="btn_save">Сохранить</button>
+              </div>
+            </div>
+
+            <div id="settings-panel-pw" class="card">
+              <h2 class="card-title" data-i18n="settings_password">Пароль веб-панели</h2>
+              <p class="dim" data-i18n="settings_password_hint">Сменить пароль администратора веб-панели. Применяется сразу.</p>
+              <div class="inline-form">
+                <input id="newpanel-pass" type="password" data-i18n-ph="ph_new_panel_pass" placeholder="новый пароль" autocomplete="off" />
+                <button id="btn-change-pass" class="primary" data-i18n="btn_change_pass">Сменить пароль</button>
+              </div>
+              <p class="dim" style="margin-top:.5rem;font-size:.8rem" data-i18n-html="panel_pw_rule">Пароль: минимум 6 символов, строчные и заглавные буквы, цифра и спецсимвол (например <span class="mono">Admin2@</span>).</p>
+            </div>
+            <div id="settings-panel-absent" class="card hidden">
+              <p class="dim" data-i18n="settings_no_panel">Веб-панель не установлена — её можно установить во вкладке «Веб-панель».</p>
+            </div>
+
+            <div class="card danger-zone">
+              <h2 class="card-title danger-title" data-i18n="settings_danger">Опасная зона</h2>
+              <div id="danger-panel-row" class="danger-row">
+                <div class="danger-text">
+                  <b data-i18n="danger_remove_panel_t">Удалить веб-панель</b>
+                  <p class="dim" data-i18n="danger_remove_panel_d">AmneziaWG и клиенты останутся.</p>
+                </div>
+                <button id="btn-remove-panel" class="ghost-danger" data-i18n="btn_remove_panel">Удалить панель</button>
+              </div>
+              <div class="danger-row">
+                <div class="danger-text">
+                  <b data-i18n="danger_remove_awg_t">Удалить AmneziaWG полностью</b>
+                  <p class="dim" data-i18n="danger_remove_awg_d">Снесёт VPN, панель, всех клиентов и конфиги с сервера.</p>
+                </div>
+                <button id="btn-uninstall" class="danger" data-i18n="btn_delete_all">Удалить всё</button>
               </div>
             </div>
           </section>

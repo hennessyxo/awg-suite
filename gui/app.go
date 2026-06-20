@@ -454,6 +454,82 @@ func (a *App) Uninstall() error {
 	return nil
 }
 
+// --- settings --------------------------------------------------------------
+
+// ServerInfoResult is the settings "about the server" card payload.
+type ServerInfoResult struct {
+	Host     string `json:"host"`
+	Port     string `json:"port"`     // WG UDP port ("" if unknown)
+	PanelURL string `json:"panelUrl"` // web panel URL
+	Version  string `json:"version"`  // AmneziaWG version ("" if unknown)
+	Uptime   string `json:"uptime"`   // localized, "" if unknown
+	Clients  int    `json:"clients"`  // configured peers
+}
+
+// ServerInfo gathers a snapshot of facts about the connected server for the
+// settings panel (port, version, uptime, client count).
+func (a *App) ServerInfo() (ServerInfoResult, error) {
+	cl, t, err := a.conn()
+	if err != nil {
+		return ServerInfoResult{}, err
+	}
+	out, err := cl.Run(deploy.ServerInfoCommand(deploy.Sudo(t.User), awgIface))
+	if err != nil {
+		return ServerInfoResult{}, fmt.Errorf("не удалось получить данные сервера: %w", err)
+	}
+	info := deploy.ParseServerInfo(out)
+	return ServerInfoResult{
+		Host:     a.target.Host,
+		Port:     info.Port,
+		PanelURL: a.panelURL(),
+		Version:  strings.TrimSpace(info.Version),
+		Uptime:   formatUptime(int(info.UptimeSeconds), a.lang),
+		Clients:  info.Peers,
+	}, nil
+}
+
+// RenameServer updates the friendly label of the connected server's saved
+// profile (local only — the VPS is not touched).
+func (a *App) RenameServer(label string) error {
+	a.mu.Lock()
+	t := a.target
+	connected := a.client != nil
+	a.mu.Unlock()
+	if !connected || t.Host == "" {
+		return fmt.Errorf("нет подключения к серверу")
+	}
+	label = strings.TrimSpace(label)
+	d := loadProfilesDisk()
+	key := profileKey(t.User, t.Host)
+	for _, e := range d.Profiles {
+		if profileKey(e.User, e.Host) == key {
+			e.Label = label
+			upsertProfile(e)
+			return nil
+		}
+	}
+	upsertProfile(ProfileEntry{Host: t.Host, User: t.User, Label: label})
+	return nil
+}
+
+// ChangePanelPassword rewrites the web panel's admin password on the server
+// (bcrypt hash + service restart). The new password is sent over the SSH session
+// via stdin, never as a command argument.
+func (a *App) ChangePanelPassword(newPassword string) error {
+	cl, t, err := a.conn()
+	if err != nil {
+		return err
+	}
+	if !validPanelPassword(newPassword) {
+		return fmt.Errorf("слабый пароль: минимум 6 символов, строчные и заглавные буквы, цифра и спецсимвол (например Admin2@)")
+	}
+	out, err := cl.RunScript(deploy.ChangePanelPasswordCommand(deploy.Sudo(t.User)), newPassword+"\n", a.logWriter("panel:log"))
+	if err != nil {
+		return fmt.Errorf("смена пароля не удалась: %w\n%s", err, out)
+	}
+	return nil
+}
+
 // --- helpers ---------------------------------------------------------------
 
 // conn returns the live client and target, or an error if not connected.

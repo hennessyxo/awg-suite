@@ -73,8 +73,38 @@ const I18N = {
     panel_pw_rule: "Пароль: минимум 6 символов, строчные и заглавные буквы, цифра и спецсимвол (например <span class=\"mono\">Admin2@</span>).",
     panel_up: "✓ Веб-панель работает:",
     btn_open_panel: "Открыть в браузере",
-    btn_remove_panel: "удалить панель",
+    btn_remove_panel: "Удалить панель",
     panel_cert_note: "Браузер один раз предупредит про самоподписанный сертификат — это нормально, трафик шифруется.",
+    tab_settings: "Настройки",
+    settings_server: "Сервер",
+    info_host: "Адрес",
+    info_port: "UDP-порт",
+    info_uptime: "Аптайм",
+    info_clients: "Клиентов",
+    info_panel: "Панель",
+    settings_rename: "Название сервера",
+    settings_rename_hint: "Понятное имя для этого подключения в приложении. На сам сервер не влияет.",
+    ph_server_name: "например, VDSina DE",
+    btn_save: "Сохранить",
+    settings_password: "Пароль веб-панели",
+    settings_password_hint: "Сменить пароль администратора веб-панели. Применяется сразу.",
+    ph_new_panel_pass: "новый пароль",
+    btn_change_pass: "Сменить пароль",
+    settings_no_panel: "Веб-панель не установлена — её можно установить во вкладке «Веб-панель».",
+    settings_danger: "Опасная зона",
+    danger_remove_panel_t: "Удалить веб-панель",
+    danger_remove_panel_d: "AmneziaWG и клиенты останутся.",
+    danger_remove_awg_t: "Удалить AmneziaWG полностью",
+    danger_remove_awg_d: "Снесёт VPN, панель, всех клиентов и конфиги с сервера.",
+    btn_delete_all: "Удалить всё",
+    busy_saving: "Сохраняю…",
+    toast_renamed: "Название сохранено",
+    e_rename: "Не удалось сохранить название: ",
+    e_server_info: "Не удалось получить данные сервера: ",
+    log_change_pass: "Смена пароля панели",
+    busy_changing_pass: "Меняю пароль…",
+    toast_pass_changed: "Пароль панели изменён",
+    e_change_pass: "Не удалось сменить пароль: ",
     client_ready_prefix: "Клиент",
     client_ready_suffix: "готов",
     qr_note: "Откройте приложение <b>AmneziaWG</b> и отсканируйте QR — или импортируйте файл .conf.",
@@ -197,8 +227,38 @@ const I18N = {
     panel_pw_rule: "Password: at least 6 chars with lower- and upper-case letters, a digit and a special character (e.g. <span class=\"mono\">Admin2@</span>).",
     panel_up: "✓ Web panel is running:",
     btn_open_panel: "Open in browser",
-    btn_remove_panel: "remove panel",
+    btn_remove_panel: "Remove panel",
     panel_cert_note: "The browser warns once about the self-signed certificate — that's expected; traffic is still encrypted.",
+    tab_settings: "Settings",
+    settings_server: "Server",
+    info_host: "Address",
+    info_port: "UDP port",
+    info_uptime: "Uptime",
+    info_clients: "Clients",
+    info_panel: "Panel",
+    settings_rename: "Server name",
+    settings_rename_hint: "A friendly name for this connection in the app. Does not affect the server itself.",
+    ph_server_name: "e.g. VDSina DE",
+    btn_save: "Save",
+    settings_password: "Web panel password",
+    settings_password_hint: "Change the web panel admin password. Applies immediately.",
+    ph_new_panel_pass: "new password",
+    btn_change_pass: "Change password",
+    settings_no_panel: "The web panel is not installed — you can install it on the \"Web panel\" tab.",
+    settings_danger: "Danger zone",
+    danger_remove_panel_t: "Remove the web panel",
+    danger_remove_panel_d: "AmneziaWG and clients stay.",
+    danger_remove_awg_t: "Remove AmneziaWG completely",
+    danger_remove_awg_d: "Wipes the VPN, panel, all clients and configs from the server.",
+    btn_delete_all: "Delete all",
+    busy_saving: "Saving…",
+    toast_renamed: "Name saved",
+    e_rename: "Could not save the name: ",
+    e_server_info: "Could not fetch server info: ",
+    log_change_pass: "Changing panel password",
+    busy_changing_pass: "Changing password…",
+    toast_pass_changed: "Panel password changed",
+    e_change_pass: "Could not change the password: ",
     client_ready_prefix: "Client",
     client_ready_suffix: "is ready",
     qr_note: "Open the <b>AmneziaWG</b> app and scan the QR — or import the .conf file.",
@@ -425,11 +485,12 @@ function initAuthTabs() {
   });
 }
 
-const MANAGE_TABS = ["clients", "monitor", "advanced"];
+const MANAGE_TABS = ["clients", "monitor", "advanced", "settings"];
 
 function selectTab(name) {
   document.querySelectorAll(".nav-item").forEach((b) => b.classList.toggle("on", b.dataset.tab === name));
   MANAGE_TABS.forEach((tab) => $("tab-" + tab).classList.toggle("hidden", tab !== name));
+  if (name === "settings") loadSettings();
 }
 
 function initTabs() {
@@ -859,6 +920,66 @@ async function openPanel() {
   }
 }
 
+// --- settings --------------------------------------------------------------
+
+// loadSettings populates the settings tab: the server-info card, the rename
+// field, and toggles the panel-password section by whether the panel exists.
+async function loadSettings() {
+  $("rename-input").value = ($("srv-label").value || "").trim();
+  try {
+    const info = await backend().ServerInfo();
+    $("info-host").textContent = info.host || "—";
+    $("info-port").textContent = info.port || "—";
+    $("info-version").textContent = info.version || "—";
+    $("info-uptime").textContent = info.uptime || "—";
+    $("info-clients").textContent = info.clients != null ? String(info.clients) : "—";
+    $("info-panel").textContent = info.panelUrl || "—";
+  } catch (err) {
+    toast(t("e_server_info") + errMsg(err), "err");
+  }
+  try {
+    const p = await backend().PanelStatus();
+    $("settings-panel-pw").classList.toggle("hidden", !p.installed);
+    $("settings-panel-absent").classList.toggle("hidden", p.installed);
+    $("danger-panel-row").classList.toggle("hidden", !p.installed);
+  } catch (_) {
+    /* leave defaults if the check fails */
+  }
+}
+
+async function renameServer() {
+  const label = $("rename-input").value.trim();
+  busy(true, t("busy_saving"));
+  try {
+    await backend().RenameServer(label);
+    await loadProfiles();
+    toast(t("toast_renamed"), "ok");
+  } catch (err) {
+    toast(t("e_rename") + errMsg(err), "err");
+  } finally {
+    busy(false);
+  }
+}
+
+async function changePanelPassword() {
+  const pass = $("newpanel-pass").value;
+  if (!validPanelPassword(pass)) {
+    toast(t("err_weak_pw"), "err");
+    return;
+  }
+  openLog(t("log_change_pass"));
+  busy(true, t("busy_changing_pass"));
+  try {
+    await backend().ChangePanelPassword(pass);
+    $("newpanel-pass").value = "";
+    toast(t("toast_pass_changed"), "ok");
+  } catch (err) {
+    toast(t("e_change_pass") + errMsg(err), "err");
+  } finally {
+    busy(false);
+  }
+}
+
 // --- client result (QR + conf) ---------------------------------------------
 
 function showResult(res) {
@@ -901,6 +1022,8 @@ window.addEventListener("DOMContentLoaded", () => {
   $("btn-install-panel").addEventListener("click", installPanel);
   $("btn-open-panel").addEventListener("click", openPanel);
   $("btn-remove-panel").addEventListener("click", removePanel);
+  $("btn-rename-server").addEventListener("click", renameServer);
+  $("btn-change-pass").addEventListener("click", changePanelPassword);
   $("result-close").addEventListener("click", () => hide($("result")));
   $("result-download").addEventListener("click", downloadConf);
   ["ios", "android", "macos", "windows"].forEach((os) => {

@@ -156,6 +156,78 @@ func IsPanelInstalled(output string) bool {
 	return strings.Contains(output, "AWG_PANEL_INSTALLED")
 }
 
+// Panel file locations on the server (mirrors the installer's readonly paths).
+const (
+	panelBin  = "/usr/local/bin/awg-panel"
+	panelHash = "/etc/amnezia/amneziawg/panel.hash"
+)
+
+// ChangePanelPasswordCommand builds the remote command that rewrites the panel's
+// bcrypt password hash and restarts the service. The new password is NOT part of
+// the command: it is read from the command's stdin (pipe it via RunScript), so it
+// never appears in argv, the process list, or logs.
+func ChangePanelPasswordCommand(sudo string) string {
+	script := "set -e; umask 077; IFS= read -r __pw; " +
+		"printf '%s\\n' \"$__pw\" | " + panelBin + " hash > " + panelHash + "; " +
+		"chmod 600 " + panelHash + "; systemctl restart awg-panel"
+	return sudo + "bash -c " + shellQuote(script)
+}
+
+// ServerInfoCommand prints labelled KEY=VALUE lines describing the server: the
+// WireGuard UDP port, AmneziaWG version, uptime (seconds) and peer count. Parse
+// the output with ParseServerInfo.
+func ServerInfoCommand(sudo, iface string) string {
+	conf := "/etc/amnezia/amneziawg/" + iface + ".conf"
+	script := "" +
+		"echo PORT=$(grep -m1 -oE 'ListenPort[[:space:]]*=[[:space:]]*[0-9]+' " + shellQuote(conf) + " 2>/dev/null | grep -oE '[0-9]+'); " +
+		"echo VER=$(awg --version 2>/dev/null | head -n1); " +
+		"echo UP=$(cut -d. -f1 /proc/uptime 2>/dev/null); " +
+		"echo PEERS=$(grep -c '^\\[Peer\\]' " + shellQuote(conf) + " 2>/dev/null)"
+	return sudo + "bash -c " + shellQuote(script)
+}
+
+// ServerInfo holds the parsed fields from ServerInfoCommand output.
+type ServerInfo struct {
+	Port          string // WG UDP port ("" if unknown)
+	Version       string // AmneziaWG version ("" if unknown)
+	UptimeSeconds int64  // host uptime in seconds (0 if unknown)
+	Peers         int    // number of configured peers
+}
+
+// ParseServerInfo reads the KEY=VALUE lines produced by ServerInfoCommand.
+func ParseServerInfo(output string) ServerInfo {
+	var info ServerInfo
+	for _, line := range strings.Split(output, "\n") {
+		k, v, ok := strings.Cut(strings.TrimSpace(line), "=")
+		if !ok {
+			continue
+		}
+		v = strings.TrimSpace(v)
+		switch k {
+		case "PORT":
+			info.Port = v
+		case "VER":
+			info.Version = v
+		case "UP":
+			info.UptimeSeconds = atoi64(v)
+		case "PEERS":
+			info.Peers = int(atoi64(v))
+		}
+	}
+	return info
+}
+
+func atoi64(s string) int64 {
+	var n int64
+	for _, r := range s {
+		if r < '0' || r > '9' {
+			return 0
+		}
+		n = n*10 + int64(r-'0')
+	}
+	return n
+}
+
 // MonitorDumpCommand returns the command that dumps live interface state.
 func MonitorDumpCommand(sudo, iface string) string {
 	return sudo + "awg show " + shellQuote(iface) + " dump"
