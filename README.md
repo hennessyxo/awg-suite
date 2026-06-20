@@ -16,16 +16,6 @@ disguises the handshake and packet headers so DPI systems can't fingerprint and
 block it. This project removes all the manual work — install, NAT/firewall,
 randomized obfuscation, client management with QR codes.
 
-## Screenshots
-
-| Desktop app — clients | Desktop app — settings |
-|:---:|:---:|
-| ![Desktop app, clients tab](docs/img/gui-clients.png) | ![Desktop app, settings tab](docs/img/gui-settings.png) |
-
-| Web panel — clients & usage | Web panel — server overview |
-|:---:|:---:|
-| ![Web panel, clients dashboard](docs/img/panel-clients.png) | ![Web panel, server overview](docs/img/panel-server.png) |
-
 ## What you need
 
 1. **A cheap VPS** running **Ubuntu 22.04+/24.04 or Debian 12+** (any hosting
@@ -57,6 +47,10 @@ A native app for **Windows** and **macOS** — no terminal at all.
 
 > Tick **"Remember password"** to skip typing it next time — it's stored in your
 > OS keychain (macOS Keychain / Windows Credential Manager), never in a file.
+
+| Manage clients | Settings (server info, password, danger zone) |
+|:---:|:---:|
+| ![Desktop app — clients tab](docs/img/gui-clients.png) | ![Desktop app — settings tab](docs/img/gui-settings.png) |
 
 ### 2. From your computer (command line) ⌨️
 
@@ -143,6 +137,10 @@ Vars: `AWG_SERVER_IP`, `AWG_PORT` (blank = free random), `AWG_DNS1/2`,
   disk / uptime), aggregate client traffic over time, a 30-day chart and the top
   clients. Menu option 7 (or the GUI's "Install web panel" button). See
   [`docs/PANEL.md`](docs/PANEL.md).
+
+| Web panel — clients & usage | Web panel — server overview |
+|:---:|:---:|
+| ![Web panel — clients dashboard](docs/img/panel-clients.png) | ![Web panel — server overview](docs/img/panel-server.png) |
 
 ## Security notes
 

@@ -157,6 +157,10 @@ func normLang(s string) string {
 // tr returns the string catalog for a language.
 func tr(lang string) map[string]string { return langs[normLang(lang)] }
 
+// Catalog returns the UI string catalog for a language (exported for tooling such
+// as the preview generator). Unknown languages fall back to the default.
+func Catalog(lang string) map[string]string { return tr(lang) }
+
 // lang reads the preferred language from the cookie (default Russian).
 func (s *Server) lang(r *http.Request) string {
 	if c, err := r.Cookie(langCookie); err == nil {
