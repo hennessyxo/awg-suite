@@ -33,12 +33,19 @@ const (
 )
 
 func main() {
-	// Subcommand: `awg-panel hash` reads a password from stdin and prints its
-	// bcrypt hash, so the installer can write a hash file without storing the
-	// plaintext password anywhere.
-	if len(os.Args) > 1 && os.Args[1] == "hash" {
-		makeHash()
-		return
+	// Subcommands. `hash` reads a password from stdin and prints its bcrypt hash
+	// (used by the installer). The `client-*` commands read and change per-client
+	// limits through the same store/shaper as the daemon, so the desktop app can
+	// manage limits over SSH once the panel is installed.
+	if len(os.Args) > 1 {
+		switch os.Args[1] {
+		case "hash":
+			makeHash()
+			return
+		case "client-list", "client-set", "client-enable", "client-disable":
+			runClientCmd(os.Args[1], os.Args[2:])
+			return
+		}
 	}
 
 	listen := flag.String("listen", ":8443", "address to listen on")

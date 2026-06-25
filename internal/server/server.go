@@ -105,20 +105,18 @@ func (s *Server) enforceOnce() {
 
 	now := time.Now()
 	_ = s.store.RecordSamples(now) // daily snapshot for day/week/month usage
-	changed := false
 	for _, rec := range s.store.List() {
 		switch lifecycle.Evaluate(rec, now) {
 		case lifecycle.ActionDelete:
 			_ = s.ctrl.RevokeClient(rec.Name)
-			changed = true
 		case lifecycle.ActionDisable:
 			_ = s.ctrl.DisableClient(rec.Name)
-			changed = true
 		}
 	}
-	if changed {
-		s.ReconcileShaper() // drop tc rules for clients just disabled/removed
-	}
+	// Reconcile bandwidth caps every cycle (the plan is idempotent). This drops tc
+	// rules for clients just disabled, and applies speed changes made out of band,
+	// e.g. via `awg-panel client-set` from the desktop app.
+	s.ReconcileShaper()
 }
 
 // ReconcileShaper rebuilds tc bandwidth caps from the lifecycle store. It is

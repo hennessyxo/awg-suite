@@ -118,3 +118,93 @@ func TestRemainingBytes(t *testing.T) {
 		t.Errorf("exceeded RemainingBytes = %d, want 0", got)
 	}
 }
+
+// TestStore_MutatePreservesOtherFields verifies Mutate changes only what fn
+// touches and, because it re-reads under lock, keeps fields another process
+// (here: a second Store on the same file) wrote in the meantime.
+func TestStore_MutatePreservesOtherFields(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "clients.json")
+	a, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := a.Put(Record{Name: "phone", UsedBytes: 500}); err != nil {
+		t.Fatal(err)
+	}
+
+	// A second process bumps usage out from under "a".
+	b, err := Open(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := b.Mutate("phone", func(r *Record) { r.UsedBytes = 999 }); err != nil {
+		t.Fatal(err)
+	}
+
+	// "a" sets a quota; it must see the fresh usage, not its stale 500.
+	if err := a.Mutate("phone", func(r *Record) { r.QuotaBytes = 50 }); err != nil {
+		t.Fatal(err)
+	}
+	rec, ok := a.Get("phone")
+	if !ok {
+		t.Fatal("phone missing")
+	}
+	if rec.UsedBytes != 999 {
+		t.Errorf("UsedBytes = %d, want 999 (external write clobbered)", rec.UsedBytes)
+	}
+	if rec.QuotaBytes != 50 {
+		t.Errorf("QuotaBytes = %d, want 50", rec.QuotaBytes)
+	}
+}
+
+// TestStore_MutateMissing returns an error for an unknown client.
+func TestStore_MutateMissing(t *testing.T) {
+	s, _ := tempStore(t)
+	if err := s.Mutate("ghost", func(*Record) {}); err == nil {
+		t.Error("Mutate on unknown client should error")
+	}
+}
+
+// TestStore_PutMergesExternalWrites verifies a Put does not drop records another
+// process added, because the transaction reloads the file first.
+func TestStore_PutMergesExternalWrites(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "clients.json")
+	a, _ := Open(path)
+	_ = a.Put(Record{Name: "phone"})
+
+	b, _ := Open(path) // another process
+	_ = b.Put(Record{Name: "laptop"})
+
+	// "a" has only phone in memory; adding tablet must keep laptop on disk.
+	_ = a.Put(Record{Name: "tablet"})
+
+	names := map[string]bool{}
+	for _, r := range a.List() {
+		names[r.Name] = true
+	}
+	for _, want := range []string{"phone", "laptop", "tablet"} {
+		if !names[want] {
+			t.Errorf("missing %q after concurrent puts; got %v", want, names)
+		}
+	}
+}
+
+// TestStore_Reload refreshes in-memory state from another process's write.
+func TestStore_Reload(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "clients.json")
+	a, _ := Open(path)
+	_ = a.Put(Record{Name: "phone", UsedBytes: 1})
+
+	b, _ := Open(path)
+	_ = b.Mutate("phone", func(r *Record) { r.UsedBytes = 42 })
+
+	if rec, _ := a.Get("phone"); rec.UsedBytes != 1 {
+		t.Fatalf("precondition: a should still see stale 1, got %d", rec.UsedBytes)
+	}
+	if err := a.Reload(); err != nil {
+		t.Fatal(err)
+	}
+	if rec, _ := a.Get("phone"); rec.UsedBytes != 42 {
+		t.Errorf("after Reload UsedBytes = %d, want 42", rec.UsedBytes)
+	}
+}

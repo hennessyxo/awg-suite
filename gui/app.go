@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"sort"
@@ -463,6 +464,89 @@ func (a *App) InstallPanel(password string) (PanelResult, error) {
 		return PanelResult{}, fmt.Errorf("установка панели не удалась: %w\n%s", err, out)
 	}
 	return PanelResult{Installed: true, URL: a.panelURL()}, nil
+}
+
+// ClientLimit mirrors the JSON from `awg-panel client-list`: the per-client
+// limits the panel daemon enforces. The desktop app reads these to prefill the
+// limit controls and writes them back through SetClientLimits.
+type ClientLimit struct {
+	Name        string `json:"name"`
+	Disabled    bool   `json:"disabled"`
+	QuotaGB     int    `json:"quotaGB"`
+	UsedBytes   uint64 `json:"usedBytes"`
+	SpeedMbit   int    `json:"speedMbit"`
+	ExpiresDays int    `json:"expiresDays"`
+}
+
+// ClientLimits lists every client's limits via the panel CLI over SSH. It only
+// works when the web panel is installed (it owns the enforcing daemon); without
+// it the call returns an empty list so the UI can hide the controls.
+func (a *App) ClientLimits() ([]ClientLimit, error) {
+	cl, t, err := a.conn()
+	if err != nil {
+		return nil, err
+	}
+	out, err := cl.Run(deploy.PanelClientLimitsCommand(deploy.Sudo(t.User)))
+	if err != nil {
+		return nil, fmt.Errorf("не удалось получить лимиты: %w", err)
+	}
+	out = strings.TrimSpace(out)
+	if out == "" {
+		return []ClientLimit{}, nil
+	}
+	var limits []ClientLimit
+	if err := json.Unmarshal([]byte(out), &limits); err != nil {
+		return nil, fmt.Errorf("не удалось разобрать лимиты (установлена ли веб-панель?): %w", err)
+	}
+	return limits, nil
+}
+
+// SetClientLimits sets a client's quota (GB), expiry (days from now) and speed
+// cap (Mbit/s) through the panel CLI. Zero means unlimited/never. Enforcement is
+// done by the panel's always-on daemon, so the panel must be installed.
+func (a *App) SetClientLimits(name string, quotaGB, expiresDays, speedMbit int) error {
+	cl, t, err := a.conn()
+	if err != nil {
+		return err
+	}
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return fmt.Errorf("укажите имя клиента")
+	}
+	cmd := deploy.PanelSetLimitsCommand(deploy.Sudo(t.User), name,
+		clampLimit(quotaGB), clampLimit(expiresDays), clampLimit(speedMbit))
+	if out, err := cl.Run(cmd); err != nil {
+		return fmt.Errorf("не удалось задать лимиты: %w\n%s", err, strings.TrimSpace(out))
+	}
+	return nil
+}
+
+// SetClientEnabled enables or disables a client through the panel CLI.
+func (a *App) SetClientEnabled(name string, enabled bool) error {
+	cl, t, err := a.conn()
+	if err != nil {
+		return err
+	}
+	name = strings.TrimSpace(name)
+	if name == "" {
+		return fmt.Errorf("укажите имя клиента")
+	}
+	cmd := deploy.PanelToggleClientCommand(deploy.Sudo(t.User), name, enabled)
+	if out, err := cl.Run(cmd); err != nil {
+		return fmt.Errorf("не удалось изменить статус клиента: %w\n%s", err, strings.TrimSpace(out))
+	}
+	return nil
+}
+
+// clampLimit keeps a UI-provided limit in a sane non-negative range.
+func clampLimit(n int) int {
+	if n < 0 {
+		return 0
+	}
+	if n > 1000000 {
+		return 1000000
+	}
+	return n
 }
 
 // RemovePanel removes the web panel from the server.

@@ -195,6 +195,31 @@ const (
 	panelHash = "/etc/amnezia/amneziawg/panel.hash"
 )
 
+// PanelClientLimitsCommand lists every client's limits (quota/expiry/speed/
+// disabled) as a JSON array, via the panel CLI. Requires the panel installed.
+func PanelClientLimitsCommand(sudo string) string {
+	return sudo + panelBin + " client-list"
+}
+
+// PanelSetLimitsCommand sets a client's quota (GB), expiry (days from now) and
+// speed cap (Mbit/s) through the panel CLI. A zero value means unlimited/never.
+// The panel daemon enforces them; this just records the desired state safely.
+func PanelSetLimitsCommand(sudo, name string, quotaGB, expiresDays, speedMbit int) string {
+	return sudo + panelBin + " client-set " + shellQuote(name) +
+		" --quota-gb " + fmt.Sprint(quotaGB) +
+		" --expires-days " + fmt.Sprint(expiresDays) +
+		" --speed-mbit " + fmt.Sprint(speedMbit)
+}
+
+// PanelToggleClientCommand enables or disables a client through the panel CLI.
+func PanelToggleClientCommand(sudo, name string, enable bool) string {
+	sub := "client-disable"
+	if enable {
+		sub = "client-enable"
+	}
+	return sudo + panelBin + " " + sub + " " + shellQuote(name)
+}
+
 // ChangePanelPasswordCommand builds the remote command that rewrites the panel's
 // bcrypt password hash and restarts the service. The new password is NOT part of
 // the command: it is read from the command's stdin (pipe it via RunScript), so it

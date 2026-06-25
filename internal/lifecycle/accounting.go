@@ -11,23 +11,21 @@ type Transfer struct {
 // tracked as the delta against the last seen values: if the current counter is
 // lower than the last (a reset), the current value is treated as the delta.
 func (s *Store) ApplyUsage(transfers map[string]Transfer) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	byKey := make(map[string]*Record, len(s.recs))
-	for _, r := range s.recs {
-		byKey[r.PubKey] = r
-	}
-
-	for pub, t := range transfers {
-		r, ok := byKey[pub]
-		if !ok {
-			continue
+	return s.txn(func() error {
+		byKey := make(map[string]*Record, len(s.recs))
+		for _, r := range s.recs {
+			byKey[r.PubKey] = r
 		}
-		r.UsedBytes += counterDelta(t.Rx, r.LastRx) + counterDelta(t.Tx, r.LastTx)
-		r.LastRx, r.LastTx = t.Rx, t.Tx
-	}
-	return s.save()
+		for pub, t := range transfers {
+			r, ok := byKey[pub]
+			if !ok {
+				continue
+			}
+			r.UsedBytes += counterDelta(t.Rx, r.LastRx) + counterDelta(t.Tx, r.LastTx)
+			r.LastRx, r.LastTx = t.Rx, t.Tx
+		}
+		return nil
+	})
 }
 
 func counterDelta(cur, last uint64) uint64 {

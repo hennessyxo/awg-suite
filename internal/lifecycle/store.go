@@ -59,23 +59,89 @@ type Store struct {
 // Open loads the store from path, creating an empty one if the file is absent.
 func Open(path string) (*Store, error) {
 	s := &Store{path: path, recs: map[string]*Record{}}
-	data, err := os.ReadFile(path)
+	if err := s.loadFromDisk(); err != nil {
+		return nil, err
+	}
+	return s, nil
+}
+
+// loadFromDisk replaces the in-memory records with the file's current contents.
+// Caller must hold the in-process mutex. An absent file yields an empty store.
+// The store is rewritten atomically (temp + rename), so a reader always sees a
+// complete file, never a torn one.
+func (s *Store) loadFromDisk() error {
+	data, err := os.ReadFile(s.path)
 	if os.IsNotExist(err) {
-		return s, nil
+		s.recs = map[string]*Record{}
+		return nil
 	}
 	if err != nil {
-		return nil, fmt.Errorf("reading lifecycle store: %w", err)
+		return fmt.Errorf("reading lifecycle store: %w", err)
 	}
 	var recs []*Record
 	if len(data) > 0 {
 		if err := json.Unmarshal(data, &recs); err != nil {
-			return nil, fmt.Errorf("parsing lifecycle store: %w", err)
+			return fmt.Errorf("parsing lifecycle store: %w", err)
 		}
 	}
+	m := make(map[string]*Record, len(recs))
 	for _, r := range recs {
-		s.recs[r.Name] = r
+		m[r.Name] = r
 	}
-	return s, nil
+	s.recs = m
+	return nil
+}
+
+// lockPath is the advisory lock file guarding cross-process transactions.
+func (s *Store) lockPath() string { return s.path + ".lock" }
+
+// txn runs fn as a load-modify-save transaction that is exclusive across
+// processes: it takes the file lock, re-reads the file so fn sees the latest
+// committed state (including edits from another process, e.g. the panel daemon
+// vs. the `awg-panel client-*` CLI), runs fn, then persists. fn mutates s.recs.
+func (s *Store) txn(fn func() error) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	lock, err := acquireLock(s.lockPath())
+	if err != nil {
+		return fmt.Errorf("locking lifecycle store: %w", err)
+	}
+	defer lock.release()
+	if err := s.loadFromDisk(); err != nil {
+		return err
+	}
+	if err := fn(); err != nil {
+		return err
+	}
+	return s.save()
+}
+
+// Reload refreshes the in-memory records from disk under the file lock, so a
+// long-running process (the daemon) picks up edits made by another process.
+func (s *Store) Reload() error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	lock, err := acquireLock(s.lockPath())
+	if err != nil {
+		return fmt.Errorf("locking lifecycle store: %w", err)
+	}
+	defer lock.release()
+	return s.loadFromDisk()
+}
+
+// Mutate applies fn to the named record inside a cross-process transaction and
+// persists. fn receives the record as currently stored on disk (so it never
+// clobbers fields another process just wrote, e.g. accumulated usage). It
+// returns an error if the client is unknown.
+func (s *Store) Mutate(name string, fn func(*Record)) error {
+	return s.txn(func() error {
+		r, ok := s.recs[name]
+		if !ok {
+			return fmt.Errorf("client %q not found", name)
+		}
+		fn(r)
+		return nil
+	})
 }
 
 // List returns a stable, copied snapshot of all records.
@@ -101,21 +167,24 @@ func (s *Store) Get(name string) (Record, bool) {
 	return *r, true
 }
 
-// Put inserts or replaces a record and persists.
+// Put inserts or replaces a record and persists. It runs as a cross-process
+// transaction, so adding one client never drops records another process added
+// concurrently. Note: replacing an existing record overwrites every field, so
+// to change only some fields of an existing client use Mutate instead.
 func (s *Store) Put(r Record) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	cp := r
-	s.recs[r.Name] = &cp
-	return s.save()
+	return s.txn(func() error {
+		cp := r
+		s.recs[r.Name] = &cp
+		return nil
+	})
 }
 
 // Delete removes a record and persists.
 func (s *Store) Delete(name string) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	delete(s.recs, name)
-	return s.save()
+	return s.txn(func() error {
+		delete(s.recs, name)
+		return nil
+	})
 }
 
 // UsedOctets returns the host octets reserved by all known records (including

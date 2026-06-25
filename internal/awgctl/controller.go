@@ -160,10 +160,7 @@ func (c FileController) DisableClient(name string) error {
 		return err
 	}
 	if c.Store != nil {
-		if rec, ok := c.Store.Get(name); ok {
-			rec.Disabled = true
-			_ = c.Store.Put(rec)
-		}
+		_ = c.Store.Mutate(name, func(rec *lifecycle.Record) { rec.Disabled = true })
 	}
 	return c.syncConf()
 }
@@ -188,17 +185,19 @@ func (c FileController) EnableClient(name string) error {
 		}
 	}
 	// Clear whatever caused the auto-disable so the enforcer doesn't immediately
-	// re-disable: drop a past expiry, and reset usage if it was over quota.
+	// re-disable: drop a past expiry, and reset usage if it was over quota. Done
+	// inside Mutate so it operates on the record's latest stored state.
 	now := time.Now()
-	if rec.ExpiresAt != nil && now.After(*rec.ExpiresAt) {
-		rec.ExpiresAt = nil
-	}
-	if rec.QuotaBytes > 0 && rec.UsedBytes >= rec.QuotaBytes {
-		rec.UsedBytes = 0
-		rec.LastRx, rec.LastTx = 0, 0
-	}
-	rec.Disabled = false
-	_ = c.Store.Put(rec)
+	_ = c.Store.Mutate(name, func(rec *lifecycle.Record) {
+		if rec.ExpiresAt != nil && now.After(*rec.ExpiresAt) {
+			rec.ExpiresAt = nil
+		}
+		if rec.QuotaBytes > 0 && rec.UsedBytes >= rec.QuotaBytes {
+			rec.UsedBytes = 0
+			rec.LastRx, rec.LastTx = 0, 0
+		}
+		rec.Disabled = false
+	})
 	return c.syncConf()
 }
 
@@ -207,19 +206,20 @@ func (c FileController) UpdateClient(name string, opts UpdateOptions) error {
 	if c.Store == nil {
 		return fmt.Errorf("no lifecycle store configured")
 	}
-	rec, ok := c.Store.Get(name)
-	if !ok {
+	if _, ok := c.Store.Get(name); !ok {
 		return fmt.Errorf("client %q not found", name)
 	}
-	rec.QuotaBytes = opts.QuotaBytes
-	rec.SpeedMbit = opts.SpeedMbit
-	if opts.ExpiresIn > 0 {
-		exp := time.Now().Add(opts.ExpiresIn)
-		rec.ExpiresAt = &exp
-	} else {
-		rec.ExpiresAt = nil
-	}
-	return c.Store.Put(rec)
+	now := time.Now()
+	return c.Store.Mutate(name, func(rec *lifecycle.Record) {
+		rec.QuotaBytes = opts.QuotaBytes
+		rec.SpeedMbit = opts.SpeedMbit
+		if opts.ExpiresIn > 0 {
+			exp := now.Add(opts.ExpiresIn)
+			rec.ExpiresAt = &exp
+		} else {
+			rec.ExpiresAt = nil
+		}
+	})
 }
 
 // RenameClient renames a client across the server config, its config file, and

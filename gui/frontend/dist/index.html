@@ -427,6 +427,40 @@
       </div>
     </div>
 
+    <!-- per-client limits modal (shown only when the web panel is installed) -->
+    <div id="limits-modal" class="overlay hidden">
+      <div class="dialog dialog-wide">
+        <div class="modal-head">
+          <h2><span data-i18n="limits_title">Лимиты клиента</span> <span id="limits-name" class="mono"></span></h2>
+          <button type="button" class="x" id="limits-close" aria-label="Закрыть">&times;</button>
+        </div>
+        <p class="dim" data-i18n="limits_hint">Ограничения применяет фоновая служба веб-панели. Пусто = без ограничения.</p>
+        <div class="lim-grid">
+          <label class="field">
+            <span data-i18n="lim_speed">Скорость, Мбит/с</span>
+            <input id="lim-speed" type="number" min="1" step="1" placeholder="∞" autocomplete="off" />
+          </label>
+          <label class="field">
+            <span data-i18n="lim_quota">Квота, ГБ</span>
+            <input id="lim-quota" type="number" min="1" step="1" placeholder="∞" autocomplete="off" />
+          </label>
+          <label class="field">
+            <span data-i18n="lim_expiry">Срок, дней</span>
+            <input id="lim-expiry" type="number" min="1" step="1" placeholder="∞" autocomplete="off" />
+          </label>
+        </div>
+        <label class="check lim-check">
+          <input id="lim-enabled" type="checkbox" />
+          <span data-i18n="lim_enabled">Клиент включён</span>
+        </label>
+        <p id="lim-used" class="dim"></p>
+        <div class="dialog-actions">
+          <button id="lim-cancel" class="ghost" data-i18n="cancel">Отмена</button>
+          <button id="lim-save" class="primary" data-i18n="btn_save">Сохранить</button>
+        </div>
+      </div>
+    </div>
+
     <div id="toast" class="toast hidden"></div>
 
     <script src="app.js"></script>

@@ -90,19 +90,17 @@ func (s *Store) DailyTotals(now time.Time, days int) []DayTotal {
 // the cumulative UsedBytes at the first reconcile of the day) and prunes old
 // samples. Called by the enforcer after usage is applied. Persists once.
 func (s *Store) RecordSamples(now time.Time) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	today := now.Format(dateLayout)
-	changed := false
-	for _, r := range s.recs {
-		if appendDailySample(r, today) {
-			changed = true
+	return s.txn(func() error {
+		changed := false
+		for _, r := range s.recs {
+			if appendDailySample(r, today) {
+				changed = true
+			}
 		}
-	}
-	if !changed {
+		_ = changed // always persist within the transaction; save() is cheap
 		return nil
-	}
-	return s.save()
+	})
 }
 
 // appendDailySample adds today's sample to r if absent and prunes to maxSamples.

@@ -176,8 +176,22 @@ const I18N = {
     cancel: "Отмена",
 
     act_config: "конфиг / QR",
+    act_limits: "лимиты",
     act_rename: "переименовать",
     act_delete: "удалить",
+    chip_disabled: "отключён",
+    unit_mbit: "Мбит",
+    unit_gb: "ГБ",
+    unit_day: "д",
+    limits_title: "Лимиты клиента",
+    limits_hint: "Ограничения применяет фоновая служба веб-панели. Пусто = без ограничения.",
+    lim_speed: "Скорость, Мбит/с",
+    lim_quota: "Квота, ГБ",
+    lim_expiry: "Срок, дней",
+    lim_enabled: "Клиент включён",
+    lim_used: "Использовано: {used}",
+    toast_limits_saved: "Лимиты сохранены",
+    e_limits: "Не удалось сохранить лимиты: ",
     delete: "Удалить",
     remove: "Убрать",
     delete_all: "Удалить всё",
@@ -393,8 +407,22 @@ const I18N = {
     cancel: "Cancel",
 
     act_config: "config / QR",
+    act_limits: "limits",
     act_rename: "rename",
     act_delete: "delete",
+    chip_disabled: "disabled",
+    unit_mbit: "Mbit",
+    unit_gb: "GB",
+    unit_day: "d",
+    limits_title: "Client limits",
+    limits_hint: "Limits are enforced by the web panel's background service. Empty = no limit.",
+    lim_speed: "Speed, Mbit/s",
+    lim_quota: "Quota, GB",
+    lim_expiry: "Expiry, days",
+    lim_enabled: "Client enabled",
+    lim_used: "Used: {used}",
+    toast_limits_saved: "Limits saved",
+    e_limits: "Could not save limits: ",
     delete: "Delete",
     remove: "Remove",
     delete_all: "Delete everything",
@@ -492,6 +520,9 @@ function openExternal(url) {
 
 let authMode = "password";
 let lastResult = null;
+let panelInstalled = false; // whether the web panel (and its enforcing daemon) is installed
+let clientLimits = {}; // name -> ClientLimit, populated when the panel is installed
+let limitsTarget = null; // client name currently open in the limits modal
 
 // --- small UI helpers ------------------------------------------------------
 
@@ -757,8 +788,8 @@ async function refreshStatus() {
       hide($("block-install"));
       show($("block-manage"));
       selectTab("clients");
+      await refreshPanel(); // sets panelInstalled before clients render their limit controls
       await refreshClients();
-      await refreshPanel();
       await refreshHealth();
       startTraffic();
     } else {
@@ -803,6 +834,15 @@ async function install() {
 
 async function refreshClients() {
   const names = (await backend().ListClients()) || [];
+  // When the panel is installed it owns the enforcing daemon, so per-client
+  // limits (speed/quota/expiry) can be managed from here too.
+  clientLimits = {};
+  if (panelInstalled) {
+    try {
+      const limits = (await backend().ClientLimits()) || [];
+      limits.forEach((l) => { clientLimits[l.name] = l; });
+    } catch (_) { /* leave limits empty; controls just won't show */ }
+  }
   const body = $("clients-body");
   body.innerHTML = "";
   if (names.length === 0) {
@@ -819,7 +859,10 @@ async function refreshClients() {
     const tr = document.createElement("tr");
     const nameTd = document.createElement("td");
     nameTd.className = "name";
-    nameTd.textContent = name;
+    nameTd.appendChild(document.createTextNode(name));
+    const chip = limitChip(clientLimits[name]);
+    if (chip) nameTd.appendChild(chip);
+
     const actTd = document.createElement("td");
     actTd.className = "r";
     actTd.innerHTML = '<div class="row-actions"></div>';
@@ -830,6 +873,14 @@ async function refreshClients() {
     conf.textContent = t("act_config");
     conf.addEventListener("click", () => showClientConfig(name));
     actions.appendChild(conf);
+
+    if (panelInstalled) {
+      const lim = document.createElement("button");
+      lim.className = "link";
+      lim.textContent = t("act_limits");
+      lim.addEventListener("click", () => openLimits(name));
+      actions.appendChild(lim);
+    }
 
     const ren = document.createElement("button");
     ren.className = "link";
@@ -846,6 +897,74 @@ async function refreshClients() {
     tr.append(nameTd, actTd);
     body.appendChild(tr);
   });
+}
+
+// limitChip builds a small badge summarizing a client's limits, or null if the
+// client has none and is enabled. Disabled clients always get a chip.
+function limitChip(l) {
+  if (!l) return null;
+  if (l.disabled) {
+    const c = document.createElement("span");
+    c.className = "chip chip-off";
+    c.textContent = t("chip_disabled");
+    return c;
+  }
+  const parts = [];
+  if (l.speedMbit > 0) parts.push(l.speedMbit + " " + t("unit_mbit"));
+  if (l.quotaGB > 0) parts.push(l.quotaGB + " " + t("unit_gb"));
+  if (l.expiresDays > 0) parts.push(l.expiresDays + t("unit_day"));
+  if (parts.length === 0) return null;
+  const c = document.createElement("span");
+  c.className = "chip";
+  c.textContent = parts.join(" · ");
+  return c;
+}
+
+// openLimits fills and shows the per-client limits modal.
+function openLimits(name) {
+  const l = clientLimits[name] || { quotaGB: 0, speedMbit: 0, expiresDays: 0, disabled: false, usedBytes: 0 };
+  limitsTarget = name;
+  $("limits-name").textContent = name;
+  $("lim-speed").value = l.speedMbit > 0 ? l.speedMbit : "";
+  $("lim-quota").value = l.quotaGB > 0 ? l.quotaGB : "";
+  $("lim-expiry").value = l.expiresDays > 0 ? l.expiresDays : "";
+  $("lim-enabled").checked = !l.disabled;
+  $("lim-used").textContent = t("lim_used", { used: humanBytes(l.usedBytes) });
+  show($("limits-modal"));
+  $("lim-speed").focus();
+}
+
+async function saveLimits() {
+  const name = limitsTarget;
+  if (!name) return;
+  const quota = Math.max(0, parseInt($("lim-quota").value, 10) || 0);
+  const speed = Math.max(0, parseInt($("lim-speed").value, 10) || 0);
+  const expiry = Math.max(0, parseInt($("lim-expiry").value, 10) || 0);
+  const enabled = $("lim-enabled").checked;
+  const cur = clientLimits[name];
+  const wasEnabled = cur ? !cur.disabled : true;
+  busy(true, t("busy_saving"));
+  try {
+    await backend().SetClientLimits(name, quota, expiry, speed);
+    if (enabled !== wasEnabled) await backend().SetClientEnabled(name, enabled);
+    hide($("limits-modal"));
+    limitsTarget = null;
+    await refreshClients();
+    toast(t("toast_limits_saved"), "ok");
+  } catch (err) {
+    toast(t("e_limits") + errMsg(err), "err");
+  } finally {
+    busy(false);
+  }
+}
+
+// humanBytes formats a byte count compactly (GUI-side, for the usage line).
+function humanBytes(n) {
+  n = Number(n) || 0;
+  const u = ["B", "KB", "MB", "GB", "TB"];
+  let i = 0;
+  while (n >= 1024 && i < u.length - 1) { n /= 1024; i++; }
+  return (i === 0 ? n : n.toFixed(1)) + " " + u[i];
 }
 
 async function addClient(e) {
@@ -1092,10 +1211,12 @@ function stopTraffic() {
 async function refreshPanel() {
   try {
     const p = await backend().PanelStatus();
+    panelInstalled = !!p.installed;
     $("panel-url").textContent = p.url;
     $("panel-absent").classList.toggle("hidden", p.installed);
     $("panel-present").classList.toggle("hidden", !p.installed);
   } catch (err) {
+    panelInstalled = false;
     toast(t("e_check_panel") + errMsg(err), "err");
   }
 }
@@ -1423,6 +1544,11 @@ window.addEventListener("DOMContentLoaded", () => {
     e.preventDefault();
     openExternal(a.id === "link-botfather" ? BOT_URLS.botfather : BOT_URLS.userinfo);
   });
+  $("lim-save").addEventListener("click", saveLimits);
+  const closeLimits = () => { hide($("limits-modal")); limitsTarget = null; };
+  $("lim-cancel").addEventListener("click", closeLimits);
+  $("limits-close").addEventListener("click", closeLimits);
+  $("limits-modal").addEventListener("click", (e) => { if (e.target === $("limits-modal")) closeLimits(); });
   $("log-close").addEventListener("click", (e) => { e.preventDefault(); e.stopPropagation(); closeLog(); });
   $("result-close").addEventListener("click", () => hide($("result")));
   $("result-download").addEventListener("click", downloadConf);
